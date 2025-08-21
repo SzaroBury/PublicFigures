@@ -1,6 +1,6 @@
 import './Comment.css';
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from '../../utils/providers/AuthProvider';
+import { useAuth } from '../../utils/providers/AuthProvider/AuthProvider';
 import ReactionButtons from '../ReactionButtons/ReactionButtons';
 import ReplyForm from './ReplyForm/ReplyForm';
 import Replies from './Replies/Replies';

@@ -1,7 +1,7 @@
 import "./ActivityDetailsPage.css";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "../../../utils/providers/AuthProvider";
+import { useAuth } from "../../../utils/providers/AuthProvider/AuthProvider";
 import { getActivityById } from "../../../services/activityService";
 import { getCommentsByActivityId } from "../../../services/commentService";
 import TagsMenu from "../../../components/TagsMenu/TagsMenu";

@@ -1,5 +1,5 @@
 import "./ReactionButtons.css";
-import { useAuth } from "../../utils/providers/AuthProvider";
+import { useAuth } from "../../utils/providers/AuthProvider/AuthProvider";
 import { useEffect, useState } from "react";
 import { postReaction } from "../../services/reactionService";
 

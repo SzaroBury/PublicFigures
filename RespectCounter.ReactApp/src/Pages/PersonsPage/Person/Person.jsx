@@ -1,7 +1,7 @@
 import "./Person.css";
 import { useNavigate } from "react-router-dom";
 import ReactionButtons from "../../../components/ReactionButtons/ReactionButtons";
-import { useAuth } from "../../../utils/providers/AuthProvider";
+import { useAuth } from "../../../utils/providers/AuthProvider/AuthProvider";
 import { hidePerson, verifyPerson } from "../../../services/personService";
 import { useEffect, useRef, useState } from "react";
 

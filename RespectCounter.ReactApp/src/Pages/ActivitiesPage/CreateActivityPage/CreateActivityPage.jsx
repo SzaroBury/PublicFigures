@@ -1,7 +1,7 @@
 import "./CreateActivityPage.css";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../../utils/providers/AuthProvider";
+import { useAuth } from "../../../utils/providers/AuthProvider/AuthProvider";
 import { getPersonsNames } from "../../../services/personService";
 import { getPersonTags } from "../../../services/tagService";
 import { postActivity } from "../../../services/activityService";

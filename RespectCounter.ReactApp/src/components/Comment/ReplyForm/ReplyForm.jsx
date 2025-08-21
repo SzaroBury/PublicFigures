@@ -1,6 +1,6 @@
 import '../Comment.css';
 import { useState } from "react";
-import { useAuth } from '../../../utils/providers/AuthProvider';
+import { useAuth } from '../../../utils/providers/AuthProvider/AuthProvider';
 import { postComment } from '../../../services/commentService';
 
 function ReplyForm({commentId, onReplyAdded, onCancel}) {

@@ -1,7 +1,7 @@
 import "./PersonDetailsPage.css";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "../../../utils/providers/AuthProvider";
+import { useAuth } from "../../../utils/providers/AuthProvider/AuthProvider";
 import Person from "../Person/Person";
 import TagsMenu from "../../../components/TagsMenu/TagsMenu";
 import SortMenu from "../../../components/SortMenu/SortMenu";

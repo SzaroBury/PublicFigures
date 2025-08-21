@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import LoginPopup from '../../components/LoginPopup/LoginPopup';
-import * as authService from '../../services/authService';
+import LoginPopup from './LoginPopup/LoginPopup';
+import * as authService from '../../../services/authService';
 
 const AuthContext = createContext();
 let logoutHandler = null;

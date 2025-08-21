@@ -1,7 +1,7 @@
 import api from "./refreshInterceptor";
 
 export const setupErrorInterceptor = (notify) => {
-  console.log("Registering error interceptor");
+  // console.log("Registering error interceptor");
   api.interceptors.response.use(
     response => response,
     error => {

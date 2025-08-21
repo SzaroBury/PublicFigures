@@ -6,7 +6,7 @@ import SortMenu from '../../components/SortMenu/SortMenu';
 import TagsMenu from '../../components/TagsMenu/TagsMenu';
 import Activity from './Activity/Activity';
 import Loading from '../../components/Loading/Loading';
-import { useAuth } from '../../utils/providers/AuthProvider';
+import { useAuth } from '../../utils/providers/AuthProvider/AuthProvider';
 
 function ActivitiesPage(props) {
     const [loading, setLoading] = useState(true);

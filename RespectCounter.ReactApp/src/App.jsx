@@ -6,7 +6,8 @@ import Footer from './components/Footer/Footer';
 import { useNotification } from './utils/providers/NotificationProvider/NotificationProvider';
 import { setupRefreshInterceptor } from "./utils/interceptors/refreshInterceptor";
 import { setupErrorInterceptor } from "./utils/interceptors/errorInterceptor";
-import { callHandleLogout } from "./utils/providers/AuthProvider";
+import { callHandleLogout } from "./utils/providers/AuthProvider/AuthProvider";
+import { AuthProvider } from './utils/providers/AuthProvider/AuthProvider';
 import { useEffect } from 'react';
 
 let interceptorsSetupFlag = false;
@@ -24,9 +25,11 @@ function App() {
 
     return ( 
         <Router>
-            <Header/>
-            <PageRenderer/>
-            <Footer/>
+            <AuthProvider>
+                <Header/>
+                <PageRenderer/>
+                <Footer/>
+            </AuthProvider>
         </Router>
     );
 };

@@ -3,7 +3,7 @@ import axios from "axios";
 const api = axios.create({ withCredentials: true });
 
 export const setupRefreshInterceptor = (callHandleLogout) => {
-  console.log("Registering refresh interceptor");
+  // console.log("Registering refresh interceptor");
   api.interceptors.response.use(
     response => response,
     async error => {

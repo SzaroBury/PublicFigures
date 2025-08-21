@@ -1,7 +1,7 @@
 import "./LoginPopup.css";
 import { useState } from "react";
-import { useAuth } from "../../utils/providers/AuthProvider";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../AuthProvider";
 
 function LoginPopup() {
     const [formData, setFormData] = useState({username: '', password: ''});

@@ -1,7 +1,7 @@
 import "./SignUpPage.css";
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../utils/providers/AuthProvider';
+import { useAuth } from '../../utils/providers/AuthProvider/AuthProvider';
 import { register, login as loginAPI } from '../../services/authService';
 import Loading from '../../components/Loading/Loading';
 

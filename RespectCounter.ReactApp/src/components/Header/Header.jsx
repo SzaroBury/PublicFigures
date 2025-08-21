@@ -1,5 +1,5 @@
 import "./Header.css"
-import { useAuth } from '../../utils/providers/AuthProvider';
+import { useAuth } from '../../utils/providers/AuthProvider/AuthProvider';
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 
