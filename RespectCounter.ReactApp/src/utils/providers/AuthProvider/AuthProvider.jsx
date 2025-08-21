@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import LoginPopup from './LoginPopup/LoginPopup';
 import * as authService from '../../../services/authService';
+import { useNotification } from '../NotificationProvider/NotificationProvider';
 
 const AuthContext = createContext();
 let logoutHandler = null;
@@ -10,6 +11,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [showLoginPopup, setShowLoginPopup] = useState(false);
     const isCheckingAuth = useRef(false);
+    const { notify } = useNotification();
     
     const openLoginPopup = useCallback(() => setShowLoginPopup(true), []);
     const closeLoginPopup = useCallback(() => setShowLoginPopup(false), []);
@@ -20,6 +22,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("user", JSON.stringify(user.data));
         setUser(user.data);
         setIsLoggedIn(true);
+        notify({message: 'User succesfully logged in.', type: 'success'});
     }, []);
 
     const handleLogout = useCallback(async () => {
@@ -27,6 +30,7 @@ export const AuthProvider = ({ children }) => {
         setIsLoggedIn(false);
         setUser(null);
         localStorage.removeItem("user");
+        notify({message: 'User succesfully logged out.', type: 'warning'});
     }, []);
 
     const checkAuthStatus = useCallback(async () => {
@@ -36,10 +40,6 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         logoutHandler = handleLogout;
     }, [handleLogout]);
-
-    useEffect(() => {
-        console.log("AuthProvider - user changed:", user);
-    }, [user]);
 
     useEffect(() => {
         const checkAuth = async () => {
