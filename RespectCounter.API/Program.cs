@@ -1,16 +1,21 @@
 using System.Text;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+
 using RespectCounter.Domain.Contracts;
+using RespectCounter.Application.Shared;
+using RespectCounter.Application.Shared.Behaviors;
+using RespectCounter.Application.Shared.Contracts;
 using RespectCounter.Infrastructure;
 using RespectCounter.Infrastructure.Repositories;
 using RespectCounter.Infrastructure.Services;
-using RespectCounter.API.Middleware;
 using RespectCounter.Infrastructure.Identity;
-using RespectCounter.Application.Common;
-using RespectCounter.Application.Commands;
+using RespectCounter.API.Middleware;
+
+using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,13 +46,36 @@ else
     builder.Services.AddDbContext<RespectDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 }   
 
-builder.Services.AddIdentity<AppUser, IdentityRole<Guid>>().AddEntityFrameworkStores<RespectDbContext>();
+builder.Services.AddIdentity<CustomIdentityUser, IdentityRole<Guid>>().AddEntityFrameworkStores<RespectDbContext>();
 
-    builder.Services.AddScoped<IDatabaseInitializer, DatabaseInitializer>();
+builder.Services.AddScoped<IDatabaseInitializer, DatabaseInitializer>(provider =>
+{
+    var context = provider.GetRequiredService<RespectDbContext>();
+    var imageService = provider.GetRequiredService<IImageService>();
+    var logger = provider.GetRequiredService<ILogger<DatabaseInitializer>>();
+    var env = provider.GetRequiredService<IWebHostEnvironment>();
+
+    var solutionRoot = Path.GetDirectoryName(env.ContentRootPath) ?? ""; 
+    var seedAssetsPath = Path.Combine(solutionRoot, "RespectCounter.Infrastructure", "SeedData", "images");
+
+    return new DatabaseInitializer(context, logger, imageService, seedAssetsPath);
+});
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IWriteRepository, WriteRepository>();
+builder.Services.AddScoped<IReadOnlyRepository, ReadOnlyRepository>();
 builder.Services.AddScoped<IJwtService, JwtService>();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining(typeof(AddActivityCommand)));
+builder.Services.AddScoped<IIdentityService, IdentityService>();
+builder.Services.AddScoped<IEntityChecker, EntityChecker>();
+builder.Services.AddScoped<IImageService, LocalImageService>(provider =>
+{
+    var env = provider.GetRequiredService<IWebHostEnvironment>();
+    return new LocalImageService(env.WebRootPath);
+});
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+});
 
 var jwtSettingsSection = builder.Configuration.GetSection("Jwt");
 var jwtSettings = jwtSettingsSection.Get<JwtSettings>();
@@ -88,16 +116,16 @@ builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
 var app = builder.Build();
 
-// Automatyczne uruchamianie migracji
+// Auto executing migrations
 if (builder.Configuration["DB"] != "InMemory")
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var initializer = scope.ServiceProvider.GetRequiredService<IDatabaseInitializer>();
-        await initializer.InitializeAsync();
-    }
+    using var scope = app.Services.CreateScope();
+    var initializer = scope.ServiceProvider.GetRequiredService<IDatabaseInitializer>();
+    await initializer.InitializeAsync();
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
@@ -109,6 +137,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseStaticFiles(); 
 app.UseCookiePolicy();
 app.UseHttpsRedirection();
 app.UseCors("DevPolicy");

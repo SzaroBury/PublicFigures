@@ -1,9 +1,9 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RespectCounter.API.Mappers;
-using RespectCounter.Application.Commands;
-using RespectCounter.Application.Queries;
+using RespectCounter.API.Extensions;
+using RespectCounter.Application.Tags.Commands;
+using RespectCounter.Application.Tags.Queries;
 using RespectCounter.Domain.Model;
 
 namespace RespectCounter.API.Controllers;
@@ -12,39 +12,39 @@ namespace RespectCounter.API.Controllers;
 [Route("api/tag")]
 public class TagController : ControllerBase
 {
-    private readonly ILogger<TagController> logger;
-    private readonly ISender mediator;
+    private readonly ILogger<TagController> _logger;
+    private readonly ISender _mediator;
 
     public TagController(ILogger<TagController> logger, ISender mediator)
     {
-        this.logger = logger;
-        this.mediator = mediator;
+        _logger = logger;
+        _mediator = mediator;
     }
 
     #region Queries
     [HttpGet("/api/tags")]
-    public async Task<IActionResult> GetTags()
+    public async Task<IActionResult> GetTags(int maxLevel = 10)
     {
-        logger.LogInformation($"{DateTime.Now}: GetTags()");
-        var query = new GetTagsQuery(5);
-        var result = await mediator.Send(query);
+        _logger.LogInformation($"{DateTime.Now}: GetTags()");
+        var query = new GetTagsQuery(maxLevel);
+        var result = await _mediator.Send(query);
         return Ok(result);
     }
 
     [HttpGet("/api/tags/simple")]
     public async Task<IActionResult> GetSimpleTags()
     {
-        logger.LogInformation($"{DateTime.Now}: GetSimpleTags()");
+        _logger.LogInformation($"{DateTime.Now}: GetSimpleTags()");
         var query = new GetSimpleTagsQuery();
-        var result = await mediator.Send(query);
+        var result = await _mediator.Send(query);
         return Ok(result);
     }
 
     [HttpGet("/api/tags/recent")]
     public IActionResult GetRecentlyBrowsedTags()
     {
-        logger.LogInformation($"{DateTime.Now}: GetRecentlyBrowsedTags()");
-        // var query = new GetFavouriteTagsQuery();
+        _logger.LogInformation($"{DateTime.Now}: GetRecentlyBrowsedTags()");
+        // var query = new GetRecentlyBrowsedTagsQuery();
         // var result = await mediator.Send(query);
         // throw new NotImplementedException();
         return Ok(new List<Tag>());
@@ -53,7 +53,7 @@ public class TagController : ControllerBase
     [HttpGet("/api/tags/favourite")]
     public IActionResult GetFavouriteTags()
     {
-        logger.LogInformation($"{DateTime.Now}: GetFavouriteTags()");
+        _logger.LogInformation($"{DateTime.Now}: GetFavouriteTags()");
         // var query = new GetFavouriteTagsQuery();
         // var result = await mediator.Send(query);
         // throw new NotImplementedException();
@@ -63,9 +63,9 @@ public class TagController : ControllerBase
     [HttpGet("/api/person/{id}/tags")]
     public async Task<IActionResult> GetPersonTags(string id)
     {
-        logger.LogInformation($"{DateTime.Now}: GetPersonTags(id: '{id}')");
+        _logger.LogInformation($"{DateTime.Now}: GetPersonTags(id: '{id}')");
         var query = new GetPersonTagsQuery(id);
-        var result = await mediator.Send(query);
+        var result = await _mediator.Send(query);
         return Ok(result);
     }
     #endregion
@@ -76,9 +76,9 @@ public class TagController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> TagActivity(string id, string tag)
     {
-        logger.LogInformation($"{DateTime.Now}: TagActivity(id: '{id}', tag: '{tag}')");
-        var command = new AddTagToActivityCommand(id.ToGuid(), tag, User.GetCurrentUserId());
-        var result = await mediator.Send(command);
+        _logger.LogInformation($"{DateTime.Now}: TagActivity(id: '{id}', tag: '{tag}')");
+        var command = new AddTagToActivityCommand(id, tag, User.GetCurrentUserId());
+        var result = await _mediator.Send(command);
         return Ok(result);
     }
 
@@ -86,9 +86,9 @@ public class TagController : ControllerBase
     [Authorize]
     public async Task<IActionResult> TagPerson(string id, string tag)
     {
-        logger.LogInformation($"{DateTime.Now}: TagPerson(id: '{id}', tag: '{tag}')");
-        var command = new AddTagToPersonCommand(id.ToGuid(), tag, User.GetCurrentUserId());
-        Person result = await mediator.Send(command);
+        _logger.LogInformation($"{DateTime.Now}: TagPerson(id: '{id}', tag: '{tag}')");
+        var command = new AddTagToPersonCommand(id, tag, User.GetCurrentUserId());
+        var result = await _mediator.Send(command);
         return Ok(result);
     }
     

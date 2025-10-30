@@ -1,62 +1,65 @@
-using System.Security;
 using MediatR;
 using RespectCounter.Domain.Model;
 using RespectCounter.Domain.Contracts;
-using RespectCounter.Application.Services;
+using RespectCounter.Application.Shared.Extensions;
+using RespectCounter.Domain.Enums;
+using DomainComment = RespectCounter.Domain.Model.Comment;
+using RespectCounter.Application.Shared.Contracts;
 
-namespace RespectCounter.Application.Commands
+namespace RespectCounter.Application.Reactions.Commands;
+
+public record AddReactionToCommentCommand(
+    string CommentId,
+    int ReactionType,
+    string UserId
+) : IRequest<int>;
+
+public class AddReactionToCommentCommandHandler : IRequestHandler<AddReactionToCommentCommand, int>
 {
-    public record AddReactionToCommentCommand(Guid CommentId, int ReactionType, Guid UserId) : IRequest<int>;
+    private readonly IReadOnlyRepository _repository;
+    private readonly IUnitOfWork _uow;
+    private readonly IIdentityService _userService;
 
-    public class AddReactionToCommentCommandHandler : IRequestHandler<AddReactionToCommentCommand, int>
+    public AddReactionToCommentCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow, IIdentityService userService)
     {
-        private readonly IUnitOfWork uow;
-        private readonly IUserService userService;
+        _repository = repository;
+        _uow = uow;
+        _userService = userService;
+    }
 
-        public AddReactionToCommentCommandHandler(IUnitOfWork uow, IUserService userService)
+    public async Task<int> Handle(AddReactionToCommentCommand request, CancellationToken cancellationToken)
+    {
+        var userId = request.UserId.ToGuid();
+        var user = await _repository.FindByIdAsync<User>(userId, cancellationToken)
+            ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
+
+        DateTime now = DateTime.UtcNow;
+
+        var commentId = request.CommentId.ToGuid();
+        DomainComment targetComment = await _repository.SingleOrDefaultAsync<DomainComment>(c => c.Id == commentId, "Reactions")
+            ?? throw new InvalidOperationException($"The comment with ID {request.CommentId} was not found in the system, despite the previous validation check.");
+
+        if (!Enum.IsDefined(typeof(ReactionType), request.ReactionType))
         {
-            this.uow = uow;
-            this.userService = userService;
+            throw new ArgumentException("Invalid format of the reaction type.");
+        }
+        
+        CommentReaction? reaction = _repository.FindQueryable<CommentReaction>(r => r.CommentId == commentId && r.CreatedById == user.Id).FirstOrDefault();
+        if(reaction != null)
+        {
+            //throw new InvalidOperationException("This user has already reacted to this comment.");
+            reaction.ReactionType = (ReactionType) request.ReactionType;
+            reaction.LastUpdated = now;
+            _uow.GetWriteRepository().Update(reaction);
+        }
+        else
+        {
+            reaction = new CommentReaction(targetComment, (ReactionType)request.ReactionType, user, now);
+            targetComment.Reactions.Add(reaction);
         }
 
-        public async Task<int> Handle(AddReactionToCommentCommand request, CancellationToken cancellationToken)
-        {
-            User? user = await userService.GetByIdAsync(request.UserId)
-                ?? throw new SecurityException("Authentication issue. No user found.");
-
-            DateTime now = DateTime.Now;
-
-            Comment? targetComment = await uow.Repository().SingleOrDefaultAsync<Comment>(c => c.Id == request.CommentId, "Reactions");
-            if(targetComment == null) throw new KeyNotFoundException("There is no comment with the given id value.");
-
-            if(!Enum.IsDefined(typeof(ReactionType), request.ReactionType)) throw new ArgumentException("Invalid format of the reaction type.");
-            
-            Reaction? reaction = uow.Repository().FindQueryable<Reaction>(r => r.CommentId == request.CommentId && r.CreatedById == user.Id).FirstOrDefault();
-            if(reaction != null)
-            {
-                //throw new InvalidOperationException("This user has already reacted to this comment.");
-                reaction.ReactionType = (ReactionType) request.ReactionType;
-                reaction.LastUpdated = now;
-                uow.Repository().Update(reaction);
-            }
-            else
-            {
-                reaction = new Reaction 
-                {
-                    CommentId = request.CommentId,
-                    ReactionType = (ReactionType) request.ReactionType,
-                    
-                    Created = now,
-                    CreatedById = user.Id,
-                    LastUpdated = now,
-                    LastUpdatedById = user.Id,
-                };
-                targetComment.Reactions.Add(reaction);
-            }
-
-            await uow.CommitAsync(cancellationToken);
-            var result = targetComment.Reactions.Sum(r => (int)r.ReactionType);
-            return result;
-        }
+        await _uow.CommitAsync(cancellationToken);
+        var result = targetComment.Reactions.Sum(r => (int)r.ReactionType);
+        return result;
     }
 }

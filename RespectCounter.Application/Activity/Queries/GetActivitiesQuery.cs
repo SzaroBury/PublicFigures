@@ -1,31 +1,32 @@
 using MediatR;
 using RespectCounter.Domain.Contracts;
 using RespectCounter.Domain.Model;
-using RespectCounter.Application.DTOs;
-using RespectCounter.Application.Common;
-using RespectCounter.Application.Services;
+using RespectCounter.Application.Shared.DTOs;
+using RespectCounter.Application.Shared.Extensions;
+using DomainActivity = RespectCounter.Domain.Model.Activity;
+using RespectCounter.Domain.Enums;
 
-namespace RespectCounter.Application.Queries;
+namespace RespectCounter.Application.Activity.Queries;
 
 public record GetActivitiesQuery(
     string Search, 
+    string? PersonId,
+    string? Type,
     string Tags, 
-    List<ActivityStatus>? Status,
-    ActivitySortBy Order, 
+    HashSet<ActivityStatus>? Status,
+    string? Order,
     int Page,
     int PageSize,
-    Guid? UserId
+    string? UserId
 ) : IRequest<IEnumerable<ActivityDTO>>;
 
 public class GetActivitiesQueryHandler : IRequestHandler<GetActivitiesQuery, IEnumerable<ActivityDTO>>
 {
-    private readonly IUnitOfWork uow;
-    private readonly IUserService userService;
+    private readonly IReadOnlyRepository _repository;
 
-    public GetActivitiesQueryHandler(IUnitOfWork uow, IUserService userService)
+    public GetActivitiesQueryHandler(IReadOnlyRepository repository)
     {
-        this.uow = uow;
-        this.userService = userService;
+        _repository = repository;
     }
 
     public async Task<IEnumerable<ActivityDTO>> Handle(GetActivitiesQuery request, CancellationToken cancellationToken)
@@ -40,18 +41,30 @@ public class GetActivitiesQueryHandler : IRequestHandler<GetActivitiesQuery, IEn
             statusFilter = request.Status!;
         }
 
-        IQueryable<Activity> query = uow.Repository().FindQueryable<Activity>(
+        var query = _repository.FindQueryable<DomainActivity>(
             a => statusFilter.Contains(a.Status)
         );
 
-        if(!string.IsNullOrEmpty(request.Search))
+        if (!string.IsNullOrEmpty(request.PersonId))
+        {
+            var personGuid = request.PersonId.ToGuid();
+            query.Where(a => a.PersonId == personGuid);
+        }
+
+        if(!string.IsNullOrEmpty(request.Type))
+        {
+            var activityType = request.Type.ToActivityTypeEnum();
+            query = query.Where(a => a.Type == activityType);
+        }
+
+        if (!string.IsNullOrEmpty(request.Search))
         {
             var search = request.Search.ToLower();
             query = query.Where(a =>
                 (a.Value != null && a.Value.ToLower().Contains(search)) ||
                 (a.Source != null && a.Source.ToLower().Contains(search)) ||
                 (a.Description != null && a.Description.ToLower().Contains(search)) ||
-                a.Tags.Any(t => t.Name != null && t.Name.ToLower().Contains(search))
+                a.Tags.Any(at => at.Tag.Name != null && at.Tag.Name.ToLower().Contains(search))
             );
         }
         
@@ -62,36 +75,34 @@ public class GetActivitiesQueryHandler : IRequestHandler<GetActivitiesQuery, IEn
             query = query.Where(
                 a => tags.All(
                     tag => a.Tags.Any(
-                        at => at.Name.Equals(tag, StringComparison.CurrentCultureIgnoreCase)
+                        at => at.Tag.Name.Equals(tag, StringComparison.CurrentCultureIgnoreCase)
                     )
                 )
             );
         }
 
-        var orderedQuery = query.ApplySorting(request.Order);
+        var sortBy = request.Order.ToActivitySortByEnum();
+        var orderedQuery = query.ApplySorting(sortBy);
 
         orderedQuery = orderedQuery.ApplyPaging(request.Page, request.PageSize);
 
-        var activities = await uow.Repository()
+        var activities = await _repository
             .FindListAsync(
                 orderedQuery,
-                ["Person", "Comments.Children", "Reactions", "Tags"],
+                ["Person", "Comments.Children", "Reactions", "Tags", "CreatedBy", "LastUpdatedBy"],
                 null,
                 cancellationToken
             );
 
-        foreach (var act in activities)
+        Guid? userId = null;
+        if(!string.IsNullOrEmpty(request.UserId))
         {
-            act.CreatedBy = await userService.GetByIdAsync(act.CreatedById);
+            userId = Guid.Parse(request.UserId);
+            var user = await _repository.FindByIdAsync<User>(userId.Value, cancellationToken)
+                ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
+            userId = user?.Id;
         }
 
-        Guid? userGuid = null;
-        if(request.UserId.HasValue)
-        {
-            User? user = await userService.GetByIdAsync(request.UserId.Value);
-            userGuid = user?.Id;
-        }
-
-        return activities.Select(a => a.ToDTO(userGuid));
+        return activities.Select(a => a.ToDTO(userId));
     }
 }

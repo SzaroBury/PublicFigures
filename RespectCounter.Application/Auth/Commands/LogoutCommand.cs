@@ -1,22 +1,24 @@
 using MediatR;
-using RespectCounter.Domain.Contracts;
+using RespectCounter.Application.Shared.Contracts;
+using RespectCounter.Application.Shared.Extensions;
 
-namespace RespectCounter.Application.Commands;
+namespace RespectCounter.Application.Auth.Commands;
 
-public record LogoutCommand(Guid UserId) : IRequest;
+public record LogoutCommand(string UserId) : IRequest;
 
 public class LogoutCommandHandler : IRequestHandler<LogoutCommand>
 {
-    private readonly IUserService userService;
+    private readonly IIdentityService _identityService;
 
-    public LogoutCommandHandler(IUserService userService)
+    public LogoutCommandHandler(IIdentityService identityService)
     {
-        this.userService = userService;
+        _identityService = identityService;
     }
 
     public async Task Handle(LogoutCommand request, CancellationToken cancellationToken)
     {
-        await userService.SetUserRefreshTokenAsync(request.UserId, null, null);
+        var userId = request.UserId.ToGuid();
+        await _identityService.SetRefreshTokenAsync(userId, null, null);
 
         return;
     }

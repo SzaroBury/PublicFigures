@@ -11,7 +11,6 @@ export const NotificationProvider = ({ children }) => {
     const notify = useCallback(({ type = "info", message }) => {
         const id = Date.now() + Math.random();
         const createdAt = new Date().toLocaleString();
-        console.log(`createdAt: ${createdAt}`);
         setNotifications(prev => [...prev, { id, type, createdAt, message }]);
         
         // Auto-remove after 8s

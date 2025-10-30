@@ -1,9 +1,9 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RespectCounter.API.Mappers;
-using RespectCounter.Application.Commands;
-using RespectCounter.Application.Queries;
+using RespectCounter.API.Extensions;
+using RespectCounter.Application.Comment.Commands;
+using RespectCounter.Application.Comment.Queries;
 
 namespace RespectCounter.API.Controllers;
 
@@ -11,13 +11,13 @@ namespace RespectCounter.API.Controllers;
 [Route("api/comment")]
 public class CommentController: ControllerBase
 {
-    private readonly ILogger<CommentController> logger;
-    private readonly ISender mediator;
+    private readonly ILogger<CommentController> _logger;
+    private readonly ISender _mediator;
 
     public CommentController(ILogger<CommentController> logger, ISender mediator)
     {
-        this.logger = logger;
-        this.mediator = mediator;
+        _logger = logger;
+        _mediator = mediator;
     }
 
     #region Queries
@@ -29,15 +29,15 @@ public class CommentController: ControllerBase
         int page = 1,
         int pageSize = 10)
     {
-        logger.LogInformation($"{DateTime.Now}: GetCommentsForActivity(id: '{id}', level: {level})");
+        _logger.LogInformation($"{DateTime.Now}: GetCommentsForActivity(id: '{id}', level: {level})");
         var query = new GetCommentsForActivityQuery(
-            id.ToGuid(),
+            id,
             level,
-            User.TryGetCurrentUserId(),
             page,
             pageSize,
-            order.ToCommentSortByEnum());
-        var result = await mediator.Send(query);
+            order,
+            User.TryGetCurrentUserId());
+        var result = await _mediator.Send(query);
         return Ok(result);
     }
 
@@ -49,15 +49,16 @@ public class CommentController: ControllerBase
         int page = 1,
         int pageSize = 10)
     {
-        logger.LogInformation($"{DateTime.Now}: GetCommentsForPerson(id: '{id}', level: {level})");
+        _logger.LogInformation($"{DateTime.Now}: GetCommentsForPerson(id: '{id}', level: {level})");
         var query = new GetCommentsForPersonQuery(
-            id.ToGuid(),
+            id,
             level,
-            User.TryGetCurrentUserId(),
             page,
             pageSize,
-            order.ToCommentSortByEnum());
-        var result = await mediator.Send(query);
+            order,
+            User.TryGetCurrentUserId()
+        );
+        var result = await _mediator.Send(query);
         return Ok(result);
     }
 
@@ -68,9 +69,9 @@ public class CommentController: ControllerBase
     [HttpPost("{id}")]
     public async Task<IActionResult> CommentToComment(string id, [FromBody] string content)
     {
-        logger.LogInformation($"{DateTime.Now}: CommentToComment(id: '{id}', content: '{content}')");
-        var command = new AddCommentToParentCommentCommand(id.ToGuid(), content, User.GetCurrentUserId());
-        var result = await mediator.Send(command);
+        _logger.LogInformation($"{DateTime.Now}: CommentToComment(id: '{id}', content: '{content}')");
+        var command = new AddCommentToParentCommentCommand(id, content, User.GetCurrentUserId());
+        var result = await _mediator.Send(command);
         return Ok(result);
     }
 
@@ -78,9 +79,9 @@ public class CommentController: ControllerBase
     [Authorize]
     public async Task<IActionResult> CommentActivity(string id, [FromBody] string content)
     {
-        logger.LogInformation($"{DateTime.Now}: CommentActivity(id: '{id}', content: '{content}')");
-        var command = new AddCommentToActivityCommand(id.ToGuid(), content, User.GetCurrentUserId());
-        var result = await mediator.Send(command);
+        _logger.LogInformation($"{DateTime.Now}: CommentActivity(id: '{id}', content: '{content}')");
+        var command = new AddCommentToActivityCommand(id, content, User.GetCurrentUserId());
+        var result = await _mediator.Send(command);
         return Ok(result);
     }
 
@@ -88,26 +89,34 @@ public class CommentController: ControllerBase
     [Authorize]
     public async Task<IActionResult> CommentPerson(string id, [FromBody] string content)
     {
-        logger.LogInformation($"{DateTime.Now}: CommentPerson(id: '{id}', content: '{content}')");
-        var command = new AddCommentToPersonCommand(id.ToGuid(), content, User.GetCurrentUserId());
-        var result = await mediator.Send(command);
+        _logger.LogInformation($"{DateTime.Now}: CommentPerson(id: '{id}', content: '{content}')");
+        var command = new AddCommentToPersonCommand(id, content, User.GetCurrentUserId());
+        var result = await _mediator.Send(command);
         return Ok(result);;
     }
 
     [HttpPut("{id}")]
     [Authorize]
-    public Task<IActionResult> UpdateComment(string id, [FromBody] string content)
+    public async Task<IActionResult> UpdateComment(string id, [FromBody] string content)
     {
-        logger.LogInformation($"{DateTime.Now}: UpdateComment(id: '{id}', content: '{content}')");
-        throw new NotImplementedException();
+        _logger.LogInformation($"{DateTime.Now}: UpdateComment(id: '{id}', content: '{content}')");
+        var userId = User.GetCurrentUserId();
+        var command = new UpdateCommentCommand(id, content, userId);
+        var result = await _mediator.Send(command);
+
+        return Ok(result);
     }
 
     [HttpPut("{id}/hide")]
     [Authorize(Roles = "Admin")]
-    public Task<IActionResult> HideComment(string id)
+    public async Task<IActionResult> HideComment(string id)
     {
-        logger.LogInformation($"{DateTime.Now}: HideComment(id: '{id}')");
-        throw new NotImplementedException();
+        _logger.LogInformation($"{DateTime.Now}: HideComment(id: '{id}')");
+        var userId = User.GetCurrentUserId();
+        var command = new HideCommentCommand(id, userId);
+        var result = await _mediator.Send(command);
+
+        return Ok(result);
     }
     #endregion
 }

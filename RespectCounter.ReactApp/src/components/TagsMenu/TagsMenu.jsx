@@ -5,8 +5,8 @@ import { useState, useEffect } from 'react';
 function TagsMenu({ countMode = 'count', tagsSelected, setTagsSelected, currentTags }) {
 
     const handleTagClick = (tag) => {
-        if (tagsSelected.some(ts => ts.id === tag.id)) {
-            setTagsSelected(tagsSelected.filter(ts => ts.id !== tag.id));
+        if (tagsSelected.some(ts => ts.name === tag.name)) {
+            setTagsSelected(tagsSelected.filter(ts => ts.name !== tag.name));
         } else {
             setTagsSelected([...tagsSelected, tag]);
         };
@@ -146,6 +146,7 @@ function AllTags({ count, tagsSelected, onTagClick }) {
         getAllTags()
             .then(response => {
                 setTags(response.data);
+                console.log('tags', response.data);
             })
             .catch(error => {
                 if (error.response) {
@@ -173,16 +174,18 @@ function AllTags({ count, tagsSelected, onTagClick }) {
             ) : (
                 <ul>
                     {tags
+                        .sort((a, b) => b.count - a.count)
                         .filter(tag => tag[count] > 0)
                         .map(tag => (
                             <li
                                 key={`Tag_${tag.name}`}
-                                className={`tag-item ${tagsSelected.some(ts => ts.id === tag.id) ? "selected-tag" : ""}`}
+                                className={`tag-item ${tagsSelected.some(ts => ts.name === tag.name) ? "selected-tag" : ""}`}
                                 onClick={() => onTagClick(tag)}
                             >
                                 {tag.name} ({tag[count]})
                             </li>
-                        ))}
+                        ))
+                    }
                 </ul>
             )}
         </section>

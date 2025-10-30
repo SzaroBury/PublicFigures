@@ -22,7 +22,7 @@ function HomePage() {
         const params = { order: "MostRespected", pageSize: 5 };
         getPersons(params)
             .then(response => {
-                setPersons(response.data);
+                setPersons(response.data.items);
                 setLoadingPersons(false);
             })
             .catch(error => {

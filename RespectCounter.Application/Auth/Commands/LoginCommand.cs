@@ -1,42 +1,32 @@
 using System.Security;
 using MediatR;
-using RespectCounter.Application.DTOs;
-using RespectCounter.Domain.Contracts;
+using RespectCounter.Application.Shared.Contracts;
+using RespectCounter.Application.Shared.DTOs;
 
-namespace RespectCounter.Application.Commands;
+namespace RespectCounter.Application.Auth.Commands;
 
 public record LoginCommand(string Username, string Password) : IRequest<AuthTokensDTO>;
 
 public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthTokensDTO>
 {
-    private readonly IUserService userService;
-    private readonly IMediator mediator;
+    private readonly IIdentityService _identityService;
 
-    public LoginCommandHandler(IUserService userService, IMediator mediator)
+    public LoginCommandHandler(IIdentityService identityService)
     {
-        this.userService = userService;
-        this.mediator = mediator;
+        _identityService = identityService;
     }
 
     public async Task<AuthTokensDTO> Handle(LoginCommand request, CancellationToken cancellationToken)
-    {
-        var user = await userService.FindByNameAsync(request.Username);
-        if (user == null)
-        {
-            user = await userService.FindByEmailAsync(request.Username);
-            if(user == null)
-            {
-                throw new SecurityException($"{request.Username} was not found.");
-            }
-        }  
-
-        if (!await userService.CheckPasswordAsync(request.Username, request.Password))
+    {        
+        if (!await _identityService.CheckPasswordAsync(request.Username, request.Password))
         {
             throw new SecurityException("Incorrect password.");
         }
 
-        var generateTokensCommand = new GenerateTokensCommand(user);
-        var tokens = await mediator.Send(generateTokensCommand, cancellationToken);
+        var identity = await _identityService.FindIdentityAsync(request.Username, cancellationToken)
+            ?? throw new InvalidOperationException($"The User '{request.Username}' was not found in the system, despite the previous validation check.");
+
+        var tokens = await _identityService.GenerateAndSetAuthTokensAsync(identity, cancellationToken);
 
         return tokens;
     }

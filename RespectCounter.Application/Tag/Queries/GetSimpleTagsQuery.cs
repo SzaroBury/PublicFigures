@@ -1,26 +1,26 @@
 using MediatR;
+using RespectCounter.Application.Shared.DTOs;
+using RespectCounter.Application.Shared.Extensions;
 using RespectCounter.Domain.Contracts;
-using RespectCounter.Application.DTOs;
 using RespectCounter.Domain.Model;
-using RespectCounter.Application.Services;
 
-namespace RespectCounter.Application.Queries
+namespace RespectCounter.Application.Tags.Queries
 {
     public record GetSimpleTagsQuery() : IRequest<IEnumerable<SimpleTagDTO>>;
 
     public class GetSimpleTagsQueryHandler : IRequestHandler<GetSimpleTagsQuery, IEnumerable<SimpleTagDTO>>
     {
-        private readonly IUnitOfWork uow;
+        private readonly IReadOnlyRepository _repository;
 
-        public GetSimpleTagsQueryHandler(IUnitOfWork uow)
+        public GetSimpleTagsQueryHandler(IReadOnlyRepository repository)
         {
-            this.uow = uow;
+            _repository = repository;
         }
 
         public async Task<IEnumerable<SimpleTagDTO>> Handle(GetSimpleTagsQuery request, CancellationToken cancellationToken)
         {
-            var tags = await uow.Repository().FindListAsync<Tag>(
-                t => t.Level == 1,
+            var tags = await _repository.FindListAsync<Tag>(
+                t => t.Count > 0,
                 ["Activities", "Persons"],
                 q => q.OrderByDescending(c => c.Created),
                 cancellationToken

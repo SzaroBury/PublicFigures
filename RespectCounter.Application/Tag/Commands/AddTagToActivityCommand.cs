@@ -1,69 +1,68 @@
-using System.Security;
 using MediatR;
 using RespectCounter.Domain.Model;
 using RespectCounter.Domain.Contracts;
-using RespectCounter.Application.DTOs;
-using RespectCounter.Application.Services;
+using RespectCounter.Application.Shared.DTOs;
+using RespectCounter.Application.Shared.Extensions;
+using DomainActivity = RespectCounter.Domain.Model.Activity;
+using RespectCounter.Application.Shared.Contracts;
 
-namespace RespectCounter.Application.Commands
+namespace RespectCounter.Application.Tags.Commands
 {
-    public record AddTagToActivityCommand(Guid ActivityId, string TagName, Guid UserId) : IRequest<ActivityDTO>;
+    public record AddTagToActivityCommand(
+        string ActivityId,
+        string TagName,
+        string UserId
+    ) : IRequest<ActivityDTO>;
 
     public class AddTagToActivityCommandHandler : IRequestHandler<AddTagToActivityCommand, ActivityDTO>
     {
-        private readonly IUnitOfWork uow;
-        private readonly IUserService userService;
+        private readonly IReadOnlyRepository _repository;
+        private readonly IUnitOfWork _uow;
+        private readonly IIdentityService _userService;
 
-        public AddTagToActivityCommandHandler(IUnitOfWork uow, IUserService userService)
+        public AddTagToActivityCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow, IIdentityService userService)
         {
-            this.uow = uow;
-            this.userService = userService;
+            _repository = repository;
+            _uow = uow;
+            _userService = userService;
         }
 
         public async Task<ActivityDTO> Handle(AddTagToActivityCommand request, CancellationToken cancellationToken)
         {
-            User? user = await userService.GetByIdAsync(request.UserId)
-                ?? throw new SecurityException("Authentication issue. No user found.");
+            var userId = request.UserId.ToGuid();
+            var user = await _repository.FindByIdAsync<User>(userId, cancellationToken)
+                ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
 
-            Activity? targetActivity = await uow.Repository().SingleOrDefaultAsync<Activity>(
-                a => a.Id == request.ActivityId,
+            var activityId = request.ActivityId.ToGuid();
+            DomainActivity targetActivity = await _repository.SingleOrDefaultAsync<DomainActivity>(
+                a => a.Id == activityId,
                 "Tags",
-                cancellationToken
-            ) ?? throw new KeyNotFoundException("There is no activity object with the given id value.");
+                cancellationToken)
+                ?? throw new InvalidOperationException($"The Activity with ID {request.ActivityId} was not found in the system, despite the previous validation check.");
                 
-            Tag? existingTag = uow.Repository().FindQueryable<Tag>(
+            Tag? existingTag = _repository.FindQueryable<Tag>(
                 t => t.Name.Equals(request.TagName, StringComparison.CurrentCultureIgnoreCase)
             ).FirstOrDefault();
-            
+
+            DateTime now = DateTime.UtcNow;
             if (existingTag == null)
             {
-                DateTime now = DateTime.Now;
-                Tag newTag = new()
+                Tag newTag = new(user, now)
                 {
                     Name = request.TagName,
-                    Description = $"Created for {targetActivity.Id} activity object.",
-                    Level = 5,
-
-                    Created = now,
-                    CreatedById = user.Id,
-                    LastUpdated = now,
-                    LastUpdatedById = user.Id
+                    Description = $"Created for {targetActivity.Id} activity object."
                 };
-                existingTag = uow.Repository().Add(newTag);
+                existingTag = _uow.GetWriteRepository().Add(newTag);
             }
-            else if (targetActivity.Tags.Any(t => t.Name.ToLower() == existingTag.Name.ToLower()))
+            else if (targetActivity.Tags.Any(at => at.Tag.Name.ToLower() == existingTag.Name.ToLower()))
             {
                 throw new InvalidOperationException("The pointed activity already has the given tag.");
             }
-            targetActivity.Tags.Add(existingTag);
+            ActivityTag activityTag = new(targetActivity, existingTag, user, now);
+            targetActivity.Tags.Add(activityTag);
 
-            await uow.CommitAsync(cancellationToken);
-
-            //cleaning data before sending it to the client
-            // existingTag.CreatedBy = null;
-            // existingTag.LastUpdatedBy = null;
-
-            return targetActivity.ToDTO(request.UserId);
+            await _uow.CommitAsync(cancellationToken);
+            return targetActivity.ToDTO(userId);
         }
     }
 }

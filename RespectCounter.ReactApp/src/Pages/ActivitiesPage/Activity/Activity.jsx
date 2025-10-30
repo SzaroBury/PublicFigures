@@ -77,8 +77,8 @@ function Activity({a: activity, showCommentsButton=true, showReactionButtons=tru
                                         right: 0,
                                         zIndex: 1000
                                     }}>
-                                        <button className="dropdown-item" onClick={hideActivity}><span className="bi bi-eye-slash-fill me-3"></span>Hide</button>
-                                        <button className="dropdown-item" onClick={verifyActivity}><span className="bi bi-patch-check-fill me-3"></span>Verify</button>
+                                        <button className="dropdown-item" onClick={() => hideActivity()}><span className="bi bi-eye-slash-fill me-3"></span>Hide</button>
+                                        <button className="dropdown-item" onClick={() => verifyActivity(activity.id)}><span className="bi bi-patch-check-fill me-3"></span>Verify</button>
                                     </div>
                                 )}
                             </div>

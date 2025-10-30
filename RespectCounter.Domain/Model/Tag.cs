@@ -4,12 +4,14 @@ namespace RespectCounter.Domain.Model;
 
 public class Tag : Entity
 {
+    public Tag(): base() { }
+    public Tag(User user, DateTime? now) : base(user, now) {}
+
     [Required]
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public int Level { get; set; } = 5;
-    public virtual List<Person> Persons { get; set; } = [];
-    public virtual List<Activity> Activities { get; set; } = [];
+    public virtual ICollection<PersonTag> Persons { get; init; } = [];
+    public virtual ICollection<ActivityTag> Activities { get; init; } = [];
     public int CountActivities => Activities.Count;
     public int CountPersons => Persons.Count;
     public int Count => CountActivities + CountPersons;

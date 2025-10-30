@@ -1,23 +1,36 @@
 import './CreatePersonPage.css';
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { postPerson } from '../../../services/personService';
-import { getSimpleTags } from '../../../services/tagService';
+import TagDropdown from './TagDropdown/TagDropdown';
+import { useNotification } from '../../../utils/providers/NotificationProvider/NotificationProvider';
 
 function CreatePersonPage() {
-    const [formData, setFormData] = useState({ firstName: '', lastName: '', nickName: '', decs: '', nationality: '', birthDate: '', deathDate: '', tags: '' });
+    const [formData, setFormData] = useState({ firstName: '', lastName: '', nickName: '', description: '', nationality: '', birthday: '', deathDate: '', tags: '' });
     const navigate = useNavigate();
+    const { notify } = useNotification();
 
     const handleDataChange = (e) => {
         const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
+
+    const handleTagsChange = useCallback((selectedTags) => {
+        // console.log(`CreatePersonPage.handleTagsChange(selectedTags[${selectedTags.length}])`);
+        setFormData(prev => ({
+            ...prev,
+            tags: selectedTags.length > 0
+                ? selectedTags.map(t => t.name.toString()).join(',')
+                : ''
+        }));
+    }, []);
 
     const handleCreateButton = async () => {
         console.log('CreatePersonPage: handleCreateButton()', formData);
         postPerson(formData)
-            .then(() => {
+            .then((response) => {
                 navigate(`/person/${response.data.id}`);
+                notify({type: 'success', message: 'Person was succesfully added.'})
             })
             .catch(error => {
                 if (error.response) {
@@ -44,11 +57,11 @@ function CreatePersonPage() {
                     <input className='form-control' name='firstName' placeholder='First name...' onChange={handleDataChange} />
                     <input className='form-control' name='lastName' placeholder='Last name...' onChange={handleDataChange} />
                 </div>
-                <div class="input-group w-75 mb-3">
+                <div className="input-group w-75 mb-3">
                     <span className='input-group-text'>Nickname:</span>
                     <input className='form-control' name='nickName' placeholder='Nick name...' onChange={handleDataChange} />
                 </div>
-                <div class="input-group w-75 mb-3">
+                <div className="input-group w-75 mb-3">
                     <span className='input-group-text'><span className='text-danger'>*</span>Profession:</span>
                     <input className='form-control' name='profession' placeholder='Nick name...' onChange={handleDataChange} />
                 </div>
@@ -56,21 +69,21 @@ function CreatePersonPage() {
                     <span className="input-group-text">
                         Description:
                     </span>
-                    <textarea className="form-control" name="desc" placeholder="" onChange={handleDataChange} />
+                    <textarea className="form-control" name="description" placeholder="" onChange={handleDataChange} />
                 </div>
                 <div className="input-group w-75 mb-3">
                     <span className="input-group-text">Birth date:</span>
-                    <input className="form-control" name="birthDate" type="date" />
+                    <input className="form-control" name="birthday" type="date" onChange={handleDataChange}/>
                     <span className="input-group-text">Death date:</span>
-                    <input className="form-control" name="deathDate" type="date" />
+                    <input className="form-control" name="deathDate" type="date" onChange={handleDataChange}/>
                 </div>
                 <div className="input-group w-75 mb-3">
                     <span className='input-group-text'>Nationality:</span>
-                    <input className="form-control" name="nationality" />
+                    <input className="form-control" name="nationality" onChange={handleDataChange}/>
                 </div>
                 <span>Add some tags:</span>
                 <div className="w-75 mb-3">
-                    <TagDropdown />
+                    <TagDropdown onTagsChange={handleTagsChange} />
                 </div>
 
                 <div className="mt-3 w-75 text-end">
@@ -89,98 +102,6 @@ function CreatePersonPage() {
             </div>
             <div></div>
         </>
-    );
-}
-
-function TagDropdown() {
-    const [inputValue, setInputValue] = useState("");
-    const [showDropdown, setShowDropdown] = useState(false);
-    const [allTags, setAllTags] = useState([]);
-    const [selectedTags, setSelectedTags] = useState([]);
-    const [filteredTags, setFilteredTags] = useState([]);
-
-    useEffect(() => {
-        loadTags();
-    }, []);
-
-    useEffect(() => {
-        setFilteredTags(
-            allTags.filter((tag) =>
-                tag.name.toLowerCase().includes(inputValue.toLowerCase())
-            )
-        );
-    }, [inputValue, allTags]);
-
-    useEffect(() => {
-        if (filteredTags.length === 0)
-            setShowDropdown(false);
-    }, [filteredTags]);
-
-    const loadTags = () => {
-        console.log('TagDropdown: loadTags()');
-        setAllTags([]);
-
-        getSimpleTags()
-            .then((response) => {
-                setAllTags(response.data);
-            })
-            .catch(error => {
-                if (error.response) {
-                    console.error(`HTTP error! Status: ${error.response.status}`);
-                } else if (error.request) {
-                    console.error("No response received: ", error.request);
-                } else {
-                    console.error("Error setting up the request: ", error.message);
-                }
-            });
-    };
-
-    const handleTagSelect = (tag) => {
-        if (!selectedTags.some((t) => t.id === tag.id)) {
-            setSelectedTags([...selectedTags, tag]);
-        }
-        setInputValue("");
-        setShowDropdown(false);
-    };
-
-    const handleTagUnselected = (tag) => {
-        const updatedTags = selectedTags.filter((t) => t.id !== tag.id);
-        setSelectedTags(updatedTags);
-    };
-
-    return (
-        <div className="position-relative">
-            <div className="form-control">
-                {
-                    selectedTags.map((tag) =>
-                        <button key={'btn_tag_' + tag.name} className="btn btn-outline-primary me-1" onClick={() => handleTagUnselected(tag)}>{tag.name}</button>
-                    )
-                }
-                <input className="border-0 p-2"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onFocus={() => setShowDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowDropdown(false), 250)}
-                    type='text'
-                    placeholder="Type to search..."
-                />
-                {showDropdown && (
-                    <ul className="dropdown-list">
-                        {
-                            filteredTags.map((tag) => (
-                                <li
-                                    className="tag-dropdown-option"
-                                    key={tag.id}
-                                    onClick={() => handleTagSelect(tag)}
-                                >
-                                    {tag.name}
-                                </li>
-                            ))
-                        }
-                    </ul>
-                )}
-            </div>
-        </div>
     );
 }
 

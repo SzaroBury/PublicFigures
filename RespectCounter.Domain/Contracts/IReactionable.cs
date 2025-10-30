@@ -2,7 +2,7 @@ using RespectCounter.Domain.Model;
 
 namespace RespectCounter.Domain.Contracts;
 
-public interface IReactionable
+public interface IReactionable<T> where T : BaseReaction
 {
-    public List<Reaction> Reactions { get; set; }
+    public ICollection<T> Reactions { get; init; }
 }

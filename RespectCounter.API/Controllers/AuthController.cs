@@ -2,10 +2,9 @@ using System.Security;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RespectCounter.API.Mappers;
+using RespectCounter.API.Extensions;
 using RespectCounter.API.Requests;
-using RespectCounter.Application.Commands;
-using RespectCounter.Application.Queries;
+using RespectCounter.Application.Auth.Commands;
 
 namespace RespectCounter.API.Controllers;
 
@@ -13,23 +12,23 @@ namespace RespectCounter.API.Controllers;
 [ApiController]
 public class AuthController : ControllerBase
 {
-    private readonly ILogger<AuthController> logger;
-    private readonly ISender mediator;
+    private readonly ILogger<AuthController> _logger;
+    private readonly ISender _mediator;
 
 
     public AuthController(ILogger<AuthController> logger, ISender mediator)
     {
-        this.logger = logger;
-        this.mediator = mediator;
+        _logger = logger;
+        _mediator = mediator;
     }
 
     [HttpPost("register")]
     public async Task<IActionResult> RegisterAsync(RegisterRequest request)
     {
-        logger.LogInformation($"{DateTime.Now}: Register([RegisterRequest])");
+        _logger.LogInformation($"{DateTime.Now}: Register([RegisterRequest])");
 
-        var command = new RegisterCommand(request.Email, request.Username, request.Password);
-        var tokens = await mediator.Send(command);
+        var command = new RegisterCommand(request.Email, request.Username, request.Password, request.ConfirmPassword);
+        var tokens = await _mediator.Send(command);
 
         AppendSecureCookie("AccessToken", tokens.AccessToken, tokens.AccessTokenExpiration);
         AppendSecureCookie("RefreshToken", tokens.RefreshToken, tokens.RefreshTokenExpiration);
@@ -40,10 +39,10 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync(LoginRequest request)
     {
-        logger.LogInformation($"{DateTime.Now}: Login([LoginRequest])");
+        _logger.LogInformation($"{DateTime.Now}: Login([LoginRequest])");
 
         var command = new LoginCommand(request.Username, request.Password);
-        var tokens = await mediator.Send(command);
+        var tokens = await _mediator.Send(command);
 
         AppendSecureCookie("AccessToken", tokens.AccessToken, tokens.AccessTokenExpiration);
         AppendSecureCookie("RefreshToken", tokens.RefreshToken, tokens.RefreshTokenExpiration);
@@ -61,10 +60,10 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> LogoutAsync()
     {
-        logger.LogInformation($"{DateTime.Now}: Logout()");
+        _logger.LogInformation($"{DateTime.Now}: Logout()");
 
         var command = new LogoutCommand(User.GetCurrentUserId());
-        await mediator.Send(command);
+        await _mediator.Send(command);
         Response.Cookies.Delete("AccessToken");
         Response.Cookies.Delete("RefreshToken");
 
@@ -74,12 +73,12 @@ public class AuthController : ControllerBase
     [HttpPost("refresh")]
     public async Task<IActionResult> RefreshAsync()
     {
-        logger.LogInformation($"{DateTime.Now}: Refresh()");
+        _logger.LogInformation($"{DateTime.Now}: Refresh()");
 
         var refreshToken = Request.Cookies["RefreshToken"]
             ?? throw new SecurityException("RefreshToken was not found in headers of the request.");
         var command = new RefreshCommand(refreshToken);
-        var tokens = await mediator.Send(command);
+        var tokens = await _mediator.Send(command);
 
         AppendSecureCookie("AccessToken", tokens.AccessToken, tokens.AccessTokenExpiration);
         AppendSecureCookie("RefreshToken", tokens.RefreshToken, tokens.RefreshTokenExpiration);
@@ -91,7 +90,7 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetClaims()
     {
-        logger.LogInformation($"{DateTime.Now}: GetClaims()");
+        _logger.LogInformation($"{DateTime.Now}: GetClaims()");
         var userClaims = new
         {
             UserName = User.Identity?.Name,

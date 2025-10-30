@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 function PersonDropdown({title, options, onPersonChange}) {
     const [inputValue, setInputValue] = useState("");
     const [showDropdown, setShowDropdown] = useState(false);
-    const [selectedOption, setSelectedOption] = useState(null);
+    const [selectedOption, setSelectedOption] = useState({id: '', fullName: ''});
 
     const filteredOptions = options.filter((option) =>
         option.fullName.toLowerCase().includes(inputValue.toLowerCase())
@@ -13,23 +13,23 @@ function PersonDropdown({title, options, onPersonChange}) {
     const handleSelect = (option) => {
         setSelectedOption(option);
         setShowDropdown(false);
-        
     };
 
     const handleClear = () => {
-        setInputValue("");
-        onPersonChange();
+        setInputValue('');
+        onPersonChange('');
     }
 
     useEffect(() => {
+        console.log('selectedOption', selectedOption);
         setInputValue(selectedOption.fullName);
         onPersonChange(selectedOption.id);
-    }, [selectedOption, onPersonChange])
+    }, [selectedOption.fullName, selectedOption.id, onPersonChange])
 
     return(
     <div className="position-relative">
         <div className="input-group" style={{ display: 'flex', alignItems: 'center' }}>
-            { title && 
+            {title && 
                 <span className="input-group-text"  style={{ whiteSpace: 'nowrap' }}>
                     {title}
                     <span className="text-danger">*</span>
@@ -46,11 +46,11 @@ function PersonDropdown({title, options, onPersonChange}) {
                     required
                 />
                 {inputValue && (
-                    <button className="dropdown-clear" onClick={handleClear}>
+                    <button className="dropdown-clear" onClick={() => handleClear}>
                         <i className="bi bi-x-lg"></i>
                     </button>
                 )}
-                { showDropdown && (
+                {showDropdown && (
                     <ul className="dropdown-list">
                     {
                         filteredOptions.map((option) => (

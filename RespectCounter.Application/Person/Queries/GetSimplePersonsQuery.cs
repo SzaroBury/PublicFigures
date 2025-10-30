@@ -1,31 +1,31 @@
 using MediatR;
-using RespectCounter.Application.DTOs;
-using RespectCounter.Domain.Model;
 using RespectCounter.Domain.Contracts;
-using RespectCounter.Application.Services;
+using RespectCounter.Application.Shared.DTOs;
+using RespectCounter.Application.Shared.Extensions;
+using DomainPerson = RespectCounter.Domain.Model.Person;
+using RespectCounter.Domain.Enums;
 
-namespace RespectCounter.Application.Queries
+namespace RespectCounter.Application.Person.Queries;
+
+public record GetSimplePersonsQuery() : IRequest<IEnumerable<SimplePersonDTO>>;
+
+public class GetSimplePersonsQueryHandler : IRequestHandler<GetSimplePersonsQuery, IEnumerable<SimplePersonDTO>>
 {
-    public record GetSimplePersonsQuery() : IRequest<IEnumerable<SimplePersonDTO>>;
-
-    public class GetSimplePersonsQueryHandler : IRequestHandler<GetSimplePersonsQuery, IEnumerable<SimplePersonDTO>>
+    private readonly IReadOnlyRepository _repository;
+    
+    public GetSimplePersonsQueryHandler(IReadOnlyRepository repository)
     {
-        private readonly IUnitOfWork uow;
-        
-        public GetSimplePersonsQueryHandler(IUnitOfWork uow)
-        {
-            this.uow = uow;
-        }
+        _repository = repository;
+    }
 
-        public async Task<IEnumerable<SimplePersonDTO>> Handle(GetSimplePersonsQuery request, CancellationToken cancellationToken)
-        {
-            var persons = await uow.Repository().FindListAsync<Person>(
-                p => p.Status != PersonStatus.Hidden,
-                ["Activities", "Persons"],
-                q => q.OrderByDescending(c => c.Created),
-                cancellationToken
-            );
-            return persons.Select(p => p.ToSimpleDTO());
-        }
+    public async Task<IEnumerable<SimplePersonDTO>> Handle(GetSimplePersonsQuery request, CancellationToken cancellationToken)
+    {
+        var persons = await _repository.FindListAsync<DomainPerson>(
+            p => p.Status != PersonStatus.Hidden,
+            null,
+            q => q.OrderByDescending(c => c.Created),
+            cancellationToken
+        );
+        return persons.Select(p => p.ToSimpleDTO());
     }
 }

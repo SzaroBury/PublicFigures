@@ -1,51 +1,30 @@
-using System.Security;
 using MediatR;
-using RespectCounter.Application.DTOs;
-using RespectCounter.Domain.Contracts;
-using RespectCounter.Domain.Model;
+using RespectCounter.Application.Shared.Contracts;
+using RespectCounter.Application.Shared.DTOs;
 
-namespace RespectCounter.Application.Commands;
+namespace RespectCounter.Application.Auth.Commands;
 
-public record RegisterCommand(string Email, string Username, string Password) : IRequest<AuthTokensDTO>;
+public record RegisterCommand(
+    string Email,
+    string Username,
+    string Password,
+    string ConfirmPassword
+) : IRequest<AuthTokensDTO>;
 
 public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthTokensDTO>
 {
-    private readonly IUserService userService;
-    private readonly IMediator mediator;
+    private readonly IIdentityService _identityService;
 
-    public RegisterCommandHandler(IUserService userService, IMediator mediator)
+    public RegisterCommandHandler(IIdentityService identityService)
     {
-        this.userService = userService;
-        this.mediator = mediator;
+        _identityService = identityService;
     }
 
     public async Task<AuthTokensDTO> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(request.Username))
-        {
-            throw new SecurityException("Username is required.");
-        }
-        if (await userService.GetByNameAsync(request.Username) != null)
-        {
-            throw new SecurityException("Username is already in use.");
-        }
-        if (string.IsNullOrEmpty(request.Email))
-        {
-            throw new SecurityException("Email is required.");
-        }
-        if(await userService.GetByEmailAsync(request.Email) != null)
-        {
-            throw new SecurityException("Email is already in use.");
-        }
-        if (string.IsNullOrWhiteSpace(request.Password))
-        {
-            throw new SecurityException("Password cannot be empty.");
-        }
+        var identity = await _identityService.CreateAsync(request.Username, request.Email, request.Password);
 
-        var user = await userService.CreateAsync(request.Username, request.Email, request.Password);
-
-        var generateTokensCommand = new GenerateTokensCommand(user);
-        var tokens = await mediator.Send(generateTokensCommand, cancellationToken);
+        var tokens = await _identityService.GenerateAndSetAuthTokensAsync(identity, cancellationToken);
 
         return tokens;
     }

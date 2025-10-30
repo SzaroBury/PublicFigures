@@ -53,8 +53,8 @@ Follow these steps to set up the project locally:
 4. **Start the React app (manual):**
    ```sh
    cd ./RespectCounter.ReactApp/
-   npm install    # Restore dependencies
-   npm start      # Start the frontend application
+   npm install
+   npm start
    ```
 
 ---
@@ -98,13 +98,31 @@ The project includes a `docker-compose.yml` file for easy multi-container setup 
 ---
 
 ## To-Do List
-
-Planned improvements and features:
-- Create a moderation page for verifying public figures and activities
-- Add error popups
+Backend:
+- FluentValidations with Pipeline Behaviour
+- Add support for user avatars and images for public figures and activities
+- Unit Tests
+- Integration Tests
+- Make sure that SOLID principles are used
 - Add an endpoint for requesting comment replies
 - Implement data hiding functionality
-- Improve the home page design
 - Implement pagination
-- Add support for user avatars and images for public figures and activities
 - Introduce a reporting system for activities and comments
+- Implement a system that will give users an ability to propose changes in descriptions of persons and activities.
+- Introduce ZLinq
+- Add custom exceptions
+
+Frontend:
+- Add error popups
+- Create a moderation page for verifying public figures and activities
+- Improve the home page design
+- Redux Toolkit, Zustand or Recoil instead of plain useState
+- async with React Query (TanStack Query)
+- unit tests (Jest and React Testing Library)
+- materialUI or AntDesign
+- make sure the app is responsive
+
+DevOps:
+- GitHub Actions (or Azure Pipelines) for automatic build and testing
+- Deployment on Azure App Service or AWS Elastic Beanstalk
+- Serilog

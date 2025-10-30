@@ -2,7 +2,7 @@ namespace RespectCounter.Domain.Contracts;
 
 public interface IUnitOfWork : IDisposable
 {
-    IRepository Repository();
+    IWriteRepository GetWriteRepository();
     Task<int> CommitAsync(CancellationToken cancellationToken = default);
     Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     Task CommitTransactionAsync(CancellationToken cancellationToken = default);

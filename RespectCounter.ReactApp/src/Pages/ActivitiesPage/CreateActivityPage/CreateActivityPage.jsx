@@ -1,6 +1,7 @@
 import "./CreateActivityPage.css";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useNotification } from "../../../utils/providers/NotificationProvider/NotificationProvider";
 import { useAuth } from "../../../utils/providers/AuthProvider/AuthProvider";
 import { getPersonsNames } from "../../../services/personService";
 import { getPersonTags } from "../../../services/tagService";
@@ -14,6 +15,7 @@ function CreateActivityPage() {
     const [personTags, setPersonTags] = useState([]);
     const { logout, openLoginPopup } = useAuth();
     const navigate = useNavigate();
+    const { notify } = useNotification();
 
     const loadPersons = async () => {
         console.log("CreateActivityPage: loadPersons()");
@@ -34,11 +36,11 @@ function CreateActivityPage() {
             });
     };
 
-    const loadPersonTags = async (id) => {
-        console.log('CreateActivityPage.loadPersonTags(id:' + id + ')');
+    const loadPersonTags = useCallback(async (id) => {
+        console.log('CreateActivityPage.loadPersonTags(id: \'' + id + '\')');
         setPersonTags([]);
 
-        getPersonTags()
+        getPersonTags(id)
             .then(response => {
                 setPersonTags(response.data);
             })
@@ -51,7 +53,7 @@ function CreateActivityPage() {
                     console.error("Error setting up the request: ", error.message);
                 }
             });
-    };
+    }, []);
 
     const handleDataChange = (e) => {
         const { name, value } = e.target;
@@ -64,8 +66,8 @@ function CreateActivityPage() {
         };
     };
 
-    const handlePersonChange = (id) => {
-        console.log(`CreateActivityPage.handlePersonChange(id: ${id})`);
+    const handlePersonChange = useCallback((id) => {
+        console.log(`CreateActivityPage.handlePersonChange(id: '${id}')`);
         if (id) {
             setFormData({ ...formData, personId: id });
             loadPersonTags(id);
@@ -73,22 +75,23 @@ function CreateActivityPage() {
             setFormData({ ...formData, personId: '' });
             setPersonTags([]);
         }
-    };
+    }, [loadPersonTags]);
 
-    const handleTagsChange = (selectedTags) => {
+    const handleTagsChange = useCallback((selectedTags) => {
         console.log(`CreateActivityPage.handleTagsChange(selectedTags[${selectedTags.length}])`);
         if (selectedTags.length > 0) {
             setFormData({ ...formData, tags: selectedTags.map(t => t.name.toString()).join(',') });
         } else {
             setFormData({ ...formData, tags: '' });
         }
-    };
+    }, []);
 
     const handleCreateButton = async () => {
         console.log('CreateActivityPage: handleCreateButton()', formData);
         postActivity(formData)
             .then((response) => {
                 console.log('CreateActivityPage: success ', response.data);
+                notify({type: 'success', message: 'Activity was successfully added.'});
                 navigate(`/act/${response.data.id}`);
             })
             .catch(error => {

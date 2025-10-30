@@ -14,7 +14,7 @@ function TagDropdown({ personTags, onTagsChange }) {
         console.log('TagDropdown: loadTags()');
         setAllTags([]);
 
-        getSimpleTags
+        getSimpleTags()
             .then(response => {
                 setAllTags(response.data);
             })
@@ -55,6 +55,16 @@ function TagDropdown({ personTags, onTagsChange }) {
         setSelectedTags([...selectedTags, tag]);
     };
 
+    const handleKeyDown = (event) => {
+        console.log(`User hit some key`);
+        // console.log(`User hit key: ${event.key}`);
+
+        if(event.key === 'Enter')
+        {
+            console.log('User hit the Enter key.');
+        }
+    };
+
     useEffect(() => {
         const updatedTags = personTags.filter(t => !selectedTags.some(st => st.name === t.name));
         setDisplayedPersonTags(updatedTags);
@@ -83,7 +93,7 @@ function TagDropdown({ personTags, onTagsChange }) {
 
     return (
         <div className="position-relative">
-            <div className="form-control">
+            <div className="form-control" onKeyDown={handleKeyDown}>
                 {
                     selectedTags.map((tag) =>
                         <button key={'btn_tag_' + tag.name} className="btn btn-outline-primary me-1" onClick={() => handleTagUnselected(tag)}>{tag.name}</button>
@@ -95,6 +105,7 @@ function TagDropdown({ personTags, onTagsChange }) {
                     )
                 }
                 <input className="border-0 p-2"
+                    name="tags"
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onFocus={() => setShowDropdown(true)}

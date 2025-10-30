@@ -1,63 +1,61 @@
-using System.Security;
 using MediatR;
 using RespectCounter.Domain.Model;
 using RespectCounter.Domain.Contracts;
+using RespectCounter.Application.Shared.Extensions;
+using RespectCounter.Domain.Enums;
+using DomainActivity = RespectCounter.Domain.Model.Activity;
+using RespectCounter.Application.Shared.Contracts;
 
-namespace RespectCounter.Application.Commands;
+namespace RespectCounter.Application.Reactions.Commands;
 
-public record AddReactionToActivityCommand(Guid ActivityId, int ReactionType, Guid UserId) : IRequest<int>;
+public record AddReactionToActivityCommand(
+    string ActivityId,
+    int ReactionType,
+    string UserId
+) : IRequest<int>;
 
 public class AddReactionToActivityCommandHandler : IRequestHandler<AddReactionToActivityCommand, int>
 {
-    private readonly IUnitOfWork uow;
-    private readonly IUserService userService;
+    private readonly IReadOnlyRepository _repository;
+    private readonly IUnitOfWork _uow;
+    private readonly IIdentityService _userService;
 
-    public AddReactionToActivityCommandHandler(IUnitOfWork uow, IUserService userService)
+    public AddReactionToActivityCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow, IIdentityService userService)
     {
-        this.uow = uow;
-        this.userService = userService;
+        _repository = repository;
+        _uow = uow;
+        _userService = userService;
     }
 
     public async Task<int> Handle(AddReactionToActivityCommand request, CancellationToken cancellationToken)
     {
-        User? user = await userService.GetByIdAsync(request.UserId) ?? throw new SecurityException("Authentication issue. No user found.");
+        var userId = request.UserId.ToGuid();
+        var user = await _repository.FindByIdAsync<User>(userId, cancellationToken)
+            ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
 
-        Activity? targetActivity = await uow.Repository().SingleOrDefaultAsync<Activity>(
-            a => a.Id == request.ActivityId,
+        var activityId = request.ActivityId.ToGuid();
+        var targetActivity = await _repository.SingleOrDefaultAsync<DomainActivity>(
+            a => a.Id == activityId,
             "Reactions",
             cancellationToken)
-            ?? throw new ArgumentException("There is no activity object with the given id value.", "activityId");
+            ?? throw new InvalidOperationException($"The Activity with ID {request.ActivityId} was not found in the system, despite the previous validation check.");
 
-        if (!Enum.IsDefined(typeof(ReactionType), request.ReactionType))
-        {
-            throw new ArgumentException("Invalid format of the reaction type.", "reaction");
-        }
+        ActivityReaction? reaction = _repository.FindQueryable<ActivityReaction>(r => r.ActivityId == activityId && r.CreatedById == user.Id).FirstOrDefault();
 
-        Reaction? reaction = uow.Repository().FindQueryable<Reaction>(r => r.ActivityId == request.ActivityId && r.CreatedById == user.Id).FirstOrDefault();
-
-        DateTime now = DateTime.Now;
+        DateTime now = DateTime.UtcNow;
         if(reaction != null)
         { 
             // throw new InvalidOperationException("This user has already reacted to this activity.");
             reaction.ReactionType = (ReactionType) request.ReactionType;
             reaction.LastUpdated = now;
-            uow.Repository().Update(reaction);
+            _uow.GetWriteRepository().Update(reaction);
         }
         else
         {
-            reaction = new Reaction 
-            {
-                ActivityId = request.ActivityId,
-                ReactionType = (ReactionType) request.ReactionType,
-                
-                Created = now,
-                CreatedById = user.Id,
-                LastUpdated = now,
-                LastUpdatedById = user.Id,
-            };
+            reaction = new ActivityReaction(targetActivity, (ReactionType)request.ReactionType, user, now);
             targetActivity.Reactions.Add(reaction);
         }
-        await uow.CommitAsync(cancellationToken);
+        await _uow.CommitAsync(cancellationToken);
 
         var result = targetActivity.Reactions.Sum(r => (int)r.ReactionType);
 

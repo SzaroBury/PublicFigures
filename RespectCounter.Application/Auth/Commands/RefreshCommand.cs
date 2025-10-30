@@ -1,28 +1,26 @@
 using MediatR;
-using RespectCounter.Application.DTOs;
-using RespectCounter.Domain.Contracts;
+using RespectCounter.Application.Shared.Contracts;
+using RespectCounter.Application.Shared.DTOs;
 
-namespace RespectCounter.Application.Commands;
+namespace RespectCounter.Application.Auth.Commands;
 
 public record RefreshCommand(string RefreshToken) : IRequest<AuthTokensDTO>;
 
 public class RefreshCommandHandler : IRequestHandler<RefreshCommand, AuthTokensDTO>
 {
-    private readonly IUserService userService;
-    private readonly IMediator mediator;
+    private readonly IIdentityService _identityService;
 
-    public RefreshCommandHandler(IUserService userService, IMediator mediator)
+    public RefreshCommandHandler(IIdentityService identityService)
     {
-        this.userService = userService;
-        this.mediator = mediator;
+        _identityService = identityService;
     }
 
     public async Task<AuthTokensDTO> Handle(RefreshCommand request, CancellationToken cancellationToken)
     {
-        var user = await userService.GetByRefreshTokenAsync(request.RefreshToken);
-
-        var generateTokensCommand = new GenerateTokensCommand(user);
-        var tokens = await mediator.Send(generateTokensCommand, cancellationToken);
+        var identity = await _identityService.FindIdentityByRefreshTokenAsync(request.RefreshToken, cancellationToken)
+            ?? throw new UnauthorizedAccessException("Invalid refresh token.");
+        
+        var tokens = await _identityService.GenerateAndSetAuthTokensAsync(identity, cancellationToken);
 
         return tokens;
     }

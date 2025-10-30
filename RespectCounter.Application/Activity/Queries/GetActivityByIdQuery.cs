@@ -1,43 +1,37 @@
 using MediatR;
-using RespectCounter.Domain.Model;
 using RespectCounter.Domain.Contracts;
-using RespectCounter.Application.DTOs;
-using RespectCounter.Application.Services;
+using RespectCounter.Application.Shared.DTOs;
+using RespectCounter.Application.Shared.Extensions;
+using DomainActivity = RespectCounter.Domain.Model.Activity;
 
-namespace RespectCounter.Application.Queries
+namespace RespectCounter.Application.Activity.Queries;
+
+public record GetActivityByIdQuery(string ActivityId, string? UserId) : IRequest<ActivityDTO>;
+
+public class GetActivityByIdQueryHandler : IRequestHandler<GetActivityByIdQuery, ActivityDTO>
 {
-    public record GetActivityByIdQuery(Guid Id, Guid? UserId) : IRequest<ActivityDTO>;
+    private readonly IReadOnlyRepository _repository;
 
-    public class GetActivityByIdQueryHandler : IRequestHandler<GetActivityByIdQuery, ActivityDTO>
+    public GetActivityByIdQueryHandler(IReadOnlyRepository repository)
     {
-        private readonly IUnitOfWork uow;
-        private readonly IUserService userService;
+        _repository = repository;
+    }
 
-        public GetActivityByIdQueryHandler(IUnitOfWork uow, IUserService userService)
+    public async Task<ActivityDTO> Handle(GetActivityByIdQuery request, CancellationToken cancellationToken)
+    {
+        Guid? userId = null;
+        if(!string.IsNullOrEmpty(request.UserId))
         {
-            this.uow = uow;
-            this.userService = userService;
+            userId = request.UserId.ToGuid();
         }
 
-        public async Task<ActivityDTO> Handle(GetActivityByIdQuery request, CancellationToken cancellationToken)
-        {
-            Guid? userId = null;
-            if(request.UserId.HasValue)
-            {
-                User? user = await userService.GetByIdAsync(request.UserId.Value);
-                userId = user?.Id;
-            }
-            
-            var act = await uow.Repository()
-                .SingleOrDefaultAsync<Activity>(
-                    a => a.Id == request.Id,
-                    "Person,Comments.Children,Reactions,Tags",
-                    cancellationToken
-                ) ?? throw new KeyNotFoundException("The activity was not found. Please enter Id of an existing activity.");
+        var actGuid = request.ActivityId.ToGuid();
+        var act = await _repository.SingleOrDefaultAsync<DomainActivity>(
+                a => a.Id == actGuid,
+                "Person,Comments.Children,Reactions,Tags,CreatedBy,LastUpdatedBy",
+                cancellationToken
+            ) ?? throw new KeyNotFoundException("The activity was not found. Please enter Id of an existing activity.");
 
-            act.CreatedBy = await userService.GetByIdAsync(act.CreatedById);
-
-            return act.ToDTO(userId);
-        }
+        return act.ToDTO(userId);
     }
 }

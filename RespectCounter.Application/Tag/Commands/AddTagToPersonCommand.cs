@@ -1,60 +1,62 @@
-using System.Security;
 using MediatR;
 using RespectCounter.Domain.Model;
 using RespectCounter.Domain.Contracts;
+using RespectCounter.Application.Shared.Extensions;
+using DomainPerson = RespectCounter.Domain.Model.Person;
+using RespectCounter.Application.Shared.DTOs;
+using RespectCounter.Application.Shared.Contracts;
 
-namespace RespectCounter.Application.Commands;
+namespace RespectCounter.Application.Tags.Commands;
 
-public record AddTagToPersonCommand(Guid PersonId, string TagName, Guid UserId) : IRequest<Person>;
+public record AddTagToPersonCommand(
+    string PersonId,
+    string TagName,
+    string UserId
+) : IRequest<PersonDTO>;
 
-public class AddTagToPersonCommandHandler : IRequestHandler<AddTagToPersonCommand, Person>
+public class AddTagToPersonCommandHandler : IRequestHandler<AddTagToPersonCommand, PersonDTO>
 {
-    private readonly IUnitOfWork uow;
-    private readonly IUserService userService;
+    private readonly IReadOnlyRepository _repository;
+    private readonly IUnitOfWork _uow;
+    private readonly IIdentityService _userService;
 
-    public AddTagToPersonCommandHandler(IUnitOfWork uow, IUserService userService)
+    public AddTagToPersonCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow, IIdentityService userService)
     {
-        this.uow = uow;
-        this.userService = userService;
+        _repository = repository;
+        _uow = uow;
+        _userService = userService;
     }
 
-    public async Task<Person> Handle(AddTagToPersonCommand request, CancellationToken cancellationToken)
+    public async Task<PersonDTO> Handle(AddTagToPersonCommand request, CancellationToken cancellationToken)
     {
-        User? user = await userService.GetByIdAsync(request.UserId)
-            ?? throw new SecurityException("Authentication issue. No user found.");
+        var userId = request.UserId.ToGuid();
+        var user = await _repository.FindByIdAsync<User>(userId, cancellationToken)
+            ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
 
-        Person? targetPerson = await uow.Repository().SingleOrDefaultAsync<Person>(p => p.Id == request.PersonId, "Tags")
-            ?? throw new KeyNotFoundException("There is no person object with the given id value.");
+        var personId = request.PersonId.ToGuid();
+        DomainPerson targetPerson = await _repository.SingleOrDefaultAsync<DomainPerson>(p => p.Id == personId, "Tags")
+            ?? throw new InvalidOperationException($"The Person with ID {request.PersonId} was not found in the system, despite the previous validation check.");
 
-        Tag? existingTag = uow.Repository().FindQueryable<Tag>(t => t.Name.ToLower() == request.TagName.ToLower()).FirstOrDefault();
+        Tag? existingTag = _repository.FindQueryable<Tag>(t => t.Name.ToLower() == request.TagName.ToLower()).FirstOrDefault();
+        var now = DateTime.UtcNow;
         if(existingTag == null)
         {
-            var now = DateTime.Now;
-            Tag newTag = new()
+            Tag newTag = new(user, now)
             {
                 Name = request.TagName,
-                Description = $"Created for {targetPerson.FirstName} {targetPerson.LastName} person object.",
-                Level = 5,
-                
-                Created = now,
-                CreatedById = user.Id,
-                LastUpdated = now,
-                LastUpdatedById = user.Id
+                Description = $"Created for {targetPerson.FirstName} {targetPerson.LastName} person object."
             };
-            existingTag = uow.Repository().Add(newTag);
+            existingTag = _uow.GetWriteRepository().Add(newTag);
         }
-        else if(targetPerson.Tags.Any(t => t.Name.ToLower() == existingTag.Name.ToLower()))
+        else if(targetPerson.Tags.Any(pt => pt.Tag.Name.ToLower() == existingTag.Name.ToLower()))
         {
             throw new InvalidOperationException("The pointed person already has the given tag.");
         }
-        targetPerson.Tags.Add(existingTag);
+        PersonTag personTag = new(targetPerson, existingTag, user, now);
+        targetPerson.Tags.Add(personTag);
 
-        await uow.CommitAsync(cancellationToken);
+        await _uow.CommitAsync(cancellationToken);
 
-        //cleaning data before sending it to the client
-        existingTag.CreatedBy = null;
-        existingTag.LastUpdatedBy = null;
-
-        return targetPerson; //toDTO
+        return targetPerson.ToDTO(userId);
     }
 }

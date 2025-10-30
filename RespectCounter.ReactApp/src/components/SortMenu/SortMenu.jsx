@@ -6,7 +6,7 @@ function SortMenu({page, onSortOptionChange, onScopeChange}) {
     return (
         <div className="sort-menu">
             <section>
-                <h5 className='m-3'>Sorting options</h5> 
+                <h5 className='m-3'>Sort</h5> 
                 <OptionsSection page={page} onSortOptionChangeClick={onSortOptionChange} />
             </section>
             {page !== "Comments" &&

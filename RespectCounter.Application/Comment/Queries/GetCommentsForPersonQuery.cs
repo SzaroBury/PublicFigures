@@ -1,61 +1,59 @@
 using MediatR;
-using RespectCounter.Application.DTOs;
-using RespectCounter.Domain.Model;
+using RespectCounter.Domain.Enums;
 using RespectCounter.Domain.Contracts;
-using RespectCounter.Application.Services;
-using RespectCounter.Application.Common;
+using RespectCounter.Application.Shared.DTOs;
+using RespectCounter.Application.Shared.Enums;
+using RespectCounter.Application.Shared.Extensions;
+using DomainComment = RespectCounter.Domain.Model.Comment;
 
-namespace RespectCounter.Application.Queries;
+namespace RespectCounter.Application.Comment.Queries;
 
 public record GetCommentsForPersonQuery(
-    Guid PersonId,
+    string PersonId,
     int Levels,
-    Guid? UserId,
     int Page,
     int PageSize,
-    CommentSortBy? Order = null
+    string? Order = null,
+    string? UserId = null
 ) : IRequest<IEnumerable<CommentDTO>>;
 
 public class GetCommentsForPersonQueryHandler : IRequestHandler<GetCommentsForPersonQuery, IEnumerable<CommentDTO>>
 {
-    private readonly IUnitOfWork uow;
-    private readonly IUserService userService;
+    private readonly IReadOnlyRepository _repository;
 
-    public GetCommentsForPersonQueryHandler(IUnitOfWork uow, IUserService userService)
+    public GetCommentsForPersonQueryHandler(IReadOnlyRepository repository)
     {
-        this.uow = uow;
-        this.userService = userService;
+        _repository = repository;
     }
 
     public async Task<IEnumerable<CommentDTO>> Handle(GetCommentsForPersonQuery request, CancellationToken cancellationToken)
     {
-        Guid? userId = null;
-        if (request.UserId.HasValue)
-        {
-            User? user = await userService.GetByIdAsync(request.UserId.Value);
-            userId = user?.Id;
-        }
+        Guid? userId = request.UserId.ToNullableGuid();
 
-        var query = uow.Repository().FindQueryable<Comment>(
-            c => c.PersonId == request.PersonId && c.CommentStatus != CommentStatus.Hidden
+        var personId = request.PersonId.ToGuid();
+        var query = _repository.FindQueryable<DomainComment>(
+            c => c.PersonId == personId && c.Status != CommentStatus.Hidden
         );
 
-        var order = request.Order ?? CommentSortBy.LatestAdded;
+        var order = CommentSortBy.LatestAdded;
+        if (!string.IsNullOrWhiteSpace(request.Order))
+        {
+            order = request.Order.ToCommentSortByEnum();
+        }
         var orderedQuery = query.ApplySorting(order);
         orderedQuery = orderedQuery.ApplyPaging(request.Page, request.PageSize);
         
-        var comments = await uow.Repository().FindListAsync<Comment>(
+        var comments = await _repository.FindListAsync(
             orderedQuery,
-            ["Children", "Reactions"],
+            ["Children", "Reactions", "CreatedBy", "LastUpdatedBy"],
             q => q.OrderByDescending(c => c.Created),
             cancellationToken
         );
 
         foreach (var comment in comments)
         {
-            comment.CreatedBy = await userService.GetByIdAsync(comment.CreatedById);
-            comment.Children = await uow.Repository().FindListAsync<Comment>(
-                c => c.ParentId == comment.Id && c.CommentStatus != CommentStatus.Hidden,
+            comment.Children = await _repository.FindListAsync<DomainComment>(
+                c => c.ParentId == comment.Id && c.Status != CommentStatus.Hidden,
                 null,
                 q => q.OrderByDescending(c => c.Created),
                 cancellationToken

@@ -17,7 +17,7 @@ function App() {
     
     useEffect(() => {
         if(!interceptorsSetupFlag) {
-            setupRefreshInterceptor(callHandleLogout);
+            setupRefreshInterceptor(notify, callHandleLogout);
             setupErrorInterceptor(notify);
             interceptorsSetupFlag = true;
         }

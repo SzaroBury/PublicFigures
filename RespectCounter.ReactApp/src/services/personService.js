@@ -1,7 +1,8 @@
 import api from "../utils/interceptors/refreshInterceptor";
 
-export const getPersons = async ({ tags = [], order = "", onlyVerified = false, page, pageSize } = {}) => {
+export const getPersons = async ({search = '', tags = [], order = '', onlyVerified = false, page, pageSize } = {}) => {
     const params = {};
+    if (search) params.search = params.search = search;
     if (tags && tags.length > 0) params.tags = tags.map(ts => ts.name).join(",");
     if (order) params.order = order;
     if (page) params.page = page;
@@ -16,17 +17,17 @@ export const getPerson = (personId) => {
 };
 
 export const getPersonsNames = () => {
-    return api.get(`/api/person/names`);
+    return api.get(`/api/persons/names`);
 };
 
 export const postPerson = (person) => {
-    api.post('/api/person', person);
+    return api.post('/api/person', person);
 };
 
 export const hidePerson = (personId) => {
-    api.post('/api/person/hide', { personId });
+    return api.post('/api/person/hide', { personId });
 };
 
 export const verifyPerson = (personId) => {
-    api.put(`/api/person/${personId}/verify`);
+    return api.put(`/api/person/${personId}/verify`);
 };

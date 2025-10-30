@@ -1,14 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 
 using MediatR;
 
 using RespectCounter.Domain.Model;
-using RespectCounter.Application.Commands;
-using RespectCounter.Application.Queries;
 using RespectCounter.API.Requests;
 using RespectCounter.API.Mappers;
+using RespectCounter.API.Extensions;
+using RespectCounter.Domain.Enums;
+using RespectCounter.Application.Activity.Queries;
+using RespectCounter.Application.Activity.Commands;
 
 namespace RespectCounter.API.Controllers;
 
@@ -16,13 +17,13 @@ namespace RespectCounter.API.Controllers;
 [Route("api/activity")]
 public class ActivityController: ControllerBase
 {
-    private readonly ILogger<ActivityController> logger;
-    private readonly ISender mediator;
+    private readonly ILogger<ActivityController> _logger;
+    private readonly ISender _mediator;
 
     public ActivityController(ILogger<ActivityController> logger, ISender mediator)
     {
-        this.logger = logger;
-        this.mediator = mediator;
+        _logger = logger;
+        _mediator = mediator;
     }
 
     #region Queries
@@ -34,16 +35,18 @@ public class ActivityController: ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)
     {
-        logger.LogInformation($"{DateTime.Now}: GetActivities(search = '{search}', order = '{order}', tags = '{tags}')");
+        _logger.LogInformation($"{DateTime.Now}: GetActivities(search = '{search}', order = '{order}', tags = '{tags}')");
         var query = new GetActivitiesQuery(
             search,
-            tags,
             null,
-            order.ToActivitySortByEnum(),
+            null,
+            tags,
+            [ActivityStatus.Verified, ActivityStatus.NotVerified],
+            order,
             page,
             pageSize,
             User.TryGetCurrentUserId());
-        var result = await mediator.Send(query);
+        var result = await _mediator.Send(query);
 
         return Ok(result);
     }
@@ -56,16 +59,18 @@ public class ActivityController: ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)
     {
-        logger.LogInformation($"{DateTime.Now}: GetVerifiedActivities(search = '{search}', order = '{order}', tags = '{tags}')");
+        _logger.LogInformation($"{DateTime.Now}: GetVerifiedActivities(search = '{search}', order = '{order}', tags = '{tags}')");
         var query = new GetActivitiesQuery(
             search,
+            null,
+            null,
             tags,
             [ActivityStatus.Verified],
-            order.ToActivitySortByEnum(),
+            order,
             page,
             pageSize,
             User.TryGetCurrentUserId());
-        var result = await mediator.Send(query);
+        var result = await _mediator.Send(query);
 
         return Ok(result);
     }
@@ -73,22 +78,24 @@ public class ActivityController: ControllerBase
     [HttpGet("/api/person/{personId}/activities")]
     public async Task<IActionResult> GetActivitiesByPerson(
         string personId,
-        string? type = null,
-        string? order = null,
+        string type = "",
+        string order = "",
         bool? onlyVerified = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)
     {
-        logger.LogInformation($"{DateTime.Now}: GetActivitiesByPerson(personId = '{personId}', type = '{type}', order = '{order}', onlyVerified = '{onlyVerified}')");
-        var query = new GetActivitiesByPersonQuery(
-            personId.ToGuid(),
-            type.ToActivityTypeEnum(),
-            onlyVerified.ToActivityStatusList(),
-            order.ToActivitySortByEnum(),
+        _logger.LogInformation($"{DateTime.Now}: GetActivitiesByPerson(personId = '{personId}', type = '{type}', order = '{order}', onlyVerified = '{onlyVerified}')");
+        var query = new GetActivitiesQuery(
+            "",
+            personId,
+            type,
+            "",
+            onlyVerified.ToActivityStatusHashSet(),
+            order,
             page,
             pageSize,
             User.TryGetCurrentUserId());
-        var result = await mediator.Send(query);
+        var result = await _mediator.Send(query);
 
         return Ok(result);
     }
@@ -96,10 +103,10 @@ public class ActivityController: ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetActivity(string id)
     {
-        logger.LogInformation($"{DateTime.Now}: GetActivity(id = '{id}')");
+        _logger.LogInformation($"{DateTime.Now}: GetActivity(id = '{id}')");
 
-        var query = new GetActivityByIdQuery(id.ToGuid(), User.TryGetCurrentUserId());
-        var result = await mediator.Send(query);
+        var query = new GetActivityByIdQuery(id, User.TryGetCurrentUserId());
+        var result = await _mediator.Send(query);
         return Ok(result);
     }
     #endregion
@@ -109,10 +116,11 @@ public class ActivityController: ControllerBase
     [Authorize]
     public async Task<IActionResult> ProposeActivity(ProposeActivityRequest newActivity)
     {
-        logger.LogInformation($"{DateTime.Now}: ProposeActivity([ProposeActivityRequest])");
-        var currentUserId = User.GetCurrentUserId(); 
-        var command = newActivity.ToCommand(currentUserId);
-        var result = await mediator.Send(command);
+        _logger.LogInformation($"{DateTime.Now}: ProposeActivity([ProposeActivityRequest])");
+        var userId = User.GetCurrentUserId(); 
+        var command = newActivity.ToAddCommand(userId);
+        var result = await _mediator.Send(command);
+
         return Ok(result);
     }
 
@@ -120,9 +128,10 @@ public class ActivityController: ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> VerifyActivity(string id)
     {
-        logger.LogInformation($"{DateTime.Now}: VerifyActivity(id: '{id}')");
-        var command = new VerifyActivityCommand(id.ToGuid());
-        var result = await mediator.Send(command);
+        _logger.LogInformation($"{DateTime.Now}: VerifyActivity(id: '{id}')");
+        var currentUserId = User.GetCurrentUserId(); 
+        var command = new VerifyActivityCommand(id, currentUserId);
+        var result = await _mediator.Send(command);
 
         return Ok(result);
     }
@@ -131,16 +140,32 @@ public class ActivityController: ControllerBase
     [Authorize]
     public Task<IActionResult> ProposeUpdateActivity(string id, [FromBody] Activity activity)
     {
-        logger.LogInformation($"{DateTime.Now}: ProposeUpdateActivity(id: '{id}', [Activity])");
+        _logger.LogInformation($"{DateTime.Now}: ProposeUpdateActivity(id: '{id}', [Activity])");
         throw new NotImplementedException();
+    }
+
+    [HttpPut("{id}/update")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateActivity(string id, [FromBody] ProposeActivityRequest activity)
+    {
+        _logger.LogInformation($"{DateTime.Now}: UpdateActivity(id: '{id}', [Activity])");
+        var userId = User.GetCurrentUserId();
+        var command = activity.ToUpdateCommand(id, userId);
+        var result = await _mediator.Send(command);
+
+        return Ok(result);
     }
 
     [HttpPut("{id}/hide")]
     [Authorize(Roles = "Admin")]
-    public Task<IActionResult> HideActivity(string id)
+    public async Task<IActionResult> HideActivity(string id)
     {
-        logger.LogInformation($"{DateTime.Now}: HideActivity(id: '{id}')");
-        throw new NotImplementedException();
+        _logger.LogInformation($"{DateTime.Now}: HideActivity(id: '{id}')");
+        var currentUserId = User.GetCurrentUserId();
+        var command = new HideActivityCommand(id, currentUserId);
+        var result = await _mediator.Send(command);
+
+        return Ok(result);
     }
     #endregion
     

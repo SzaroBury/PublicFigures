@@ -16,9 +16,9 @@ public class UnitOfWork : IUnitOfWork
         context.Database.EnsureCreated();
     }
 
-    public IRepository Repository()
+    public IWriteRepository GetWriteRepository()
     {
-        return new Repository(context);
+        return new WriteRepository(context);
     }
 
     public Task<int> CommitAsync(CancellationToken cancellationToken = default)

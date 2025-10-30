@@ -1,11 +1,13 @@
-using System.Security;
 using MediatR;
-using RespectCounter.Application.DTOs;
 using RespectCounter.Domain.Model;
 using RespectCounter.Domain.Contracts;
-using RespectCounter.Application.Services;
+using RespectCounter.Application.Shared.DTOs;
+using RespectCounter.Application.Shared.Extensions;
+using PersonDomain = RespectCounter.Domain.Model.Person;
+using RespectCounter.Domain.Enums;
+using RespectCounter.Application.Shared.Contracts;
 
-namespace RespectCounter.Application.Commands;
+namespace RespectCounter.Application.Person.Commands;
 
 public record AddPersonCommand(
     string FirstName, 
@@ -14,33 +16,45 @@ public record AddPersonCommand(
     string Profession,
     string Description, 
     string Nationality, 
-    DateTime? Birthday, 
-    DateTime? DeathDate, 
+    string? Birthday, 
+    string? DeathDate, 
     string Tags,
-    Guid UserId
+    string UserId
 ) : IRequest<PersonDTO>;
 
 public class AddPersonCommandHandler : IRequestHandler<AddPersonCommand, PersonDTO>
 {
-    private readonly IUnitOfWork uow;
-    private readonly IUserService userService;
+    private readonly IReadOnlyRepository _repository;
+    private readonly IUnitOfWork _uow;
+    private readonly IIdentityService _userService;
 
-    public AddPersonCommandHandler(IUnitOfWork uow, IUserService userService)
+    public AddPersonCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow, IIdentityService userService)
     {
-        this.uow = uow;
-        this.userService = userService;
+        _repository = repository;
+        _uow = uow;
+        _userService = userService;
     }
 
     public async Task<PersonDTO> Handle(AddPersonCommand request, CancellationToken cancellationToken)
     {
-        User? user = await userService.GetByIdAsync(request.UserId)
-            ?? throw new SecurityException("Authentication issue. No user found.");
+        var userId = request.UserId.ToGuid();
+        var user = await _repository.FindByIdAsync<User>(userId, cancellationToken)
+            ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
 
-        DateOnly? birthday = request.Birthday.HasValue ? DateOnly.FromDateTime(request.Birthday.Value) : null;
-        DateOnly? deathDate = request.DeathDate.HasValue ? DateOnly.FromDateTime(request.DeathDate.Value) : null;
+        DateOnly? birthday = null;
+        if (!string.IsNullOrWhiteSpace(request.Birthday))
+        {
+            birthday = request.Birthday.ToDateOnly();
+        }
 
-        DateTime now = DateTime.Now;
-        Person? newPerson = new()
+        DateOnly? deathDate = null;
+        if (!string.IsNullOrWhiteSpace(request.DeathDate))
+        {
+            deathDate = request.DeathDate.ToDateOnly();
+        } 
+
+        DateTime now = DateTime.UtcNow;
+        PersonDomain newPerson = new(user, now)
         {
             FirstName = request.FirstName,
             LastName = request.LastName,
@@ -50,38 +64,29 @@ public class AddPersonCommandHandler : IRequestHandler<AddPersonCommand, PersonD
             Nationality = request.Nationality,
             Birthday = birthday,
             DeathDate = deathDate,
-
             Status = PersonStatus.NotVerified,
-            Created = now,
-            CreatedById = user.Id,
-            LastUpdated = now,
-            LastUpdatedById = user.Id
         };
 
         List<string> tags = request.Tags.Split(",").ToList();
-        foreach(string tag in tags)
+        tags.Remove("");
+        foreach (string tag in tags)
         {
-            Tag? existingTag = uow.Repository().FindQueryable<Tag>(t => t.Name.ToLower() == tag.ToLower()).FirstOrDefault();
-            if(existingTag == null)
+            Tag? existingTag = _repository.FindQueryable<Tag>(t => t.Name.ToLower() == tag.ToLower()).FirstOrDefault();
+            if (existingTag == null)
             {
-                Tag newTag = new Tag 
+                Tag newTag = new(user, now)
                 {
                     Name = tag,
-                    Description = $"Created with {request.FirstName} {request.LastName} person object.",
-                    Level = 5,
-                    
-                    Created = now,
-                    CreatedById = Guid.Empty,
-                    LastUpdated = now,
-                    LastUpdatedById = Guid.Empty
+                    Description = $"Created with {request.FirstName} {request.LastName} person object."
                 };
-                existingTag = uow.Repository().Add(newTag);
+                existingTag = _uow.GetWriteRepository().Add(newTag);
             }
-            newPerson.Tags.Add(existingTag);
+            PersonTag personTag = new(newPerson, existingTag, user, now);
+            newPerson.Tags.Add(personTag);
         }
-        var result = uow.Repository().Add(newPerson);
-        await uow.CommitAsync(cancellationToken);
+        var result = _uow.GetWriteRepository().Add(newPerson);
+        await _uow.CommitAsync(cancellationToken);
 
-        return result.ToDTO(request.UserId);
+        return result.ToDTO(userId);
     }
 }

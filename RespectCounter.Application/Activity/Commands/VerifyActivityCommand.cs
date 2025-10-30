@@ -1,36 +1,41 @@
 using MediatR;
 using RespectCounter.Domain.Model;
 using RespectCounter.Domain.Contracts;
-using RespectCounter.Application.DTOs;
-using RespectCounter.Application.Services;
+using RespectCounter.Application.Shared.DTOs;
+using RespectCounter.Application.Shared.Extensions;
+using DomainActivity = RespectCounter.Domain.Model.Activity;
 
-namespace RespectCounter.Application.Commands
+namespace RespectCounter.Application.Activity.Commands
 {
-    public record VerifyActivityCommand(Guid Id) : IRequest<ActivityDTO>;
+    public record VerifyActivityCommand(string ActivityId, string UserId) : IRequest<ActivityDTO>;
 
     public class VerifyActivityCommandHandler : IRequestHandler<VerifyActivityCommand, ActivityDTO>
     {
-        private readonly IUnitOfWork uow;
+        private readonly IReadOnlyRepository _repository;
+        private readonly IUnitOfWork _uow;
 
-        public VerifyActivityCommandHandler(IUnitOfWork uow)
+        public VerifyActivityCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow)
         {
-            this.uow = uow;
+            _repository = repository;
+            _uow = uow;
         }
 
         public async Task<ActivityDTO> Handle(VerifyActivityCommand request, CancellationToken cancellationToken)
         {
-            DateTime now = DateTime.Now;
+            DateTime now = DateTime.UtcNow;
 
-            //Get the activity
-            Activity? a = await uow.Repository().FindByIdAsync<Activity>(request.Id)
-                ?? throw new KeyNotFoundException($"The activity with the given ID ({request.Id}) was not found.");
+            Guid userId = request.UserId.ToGuid();
+            var user = await _repository.FindByIdAsync<User>(userId, cancellationToken)
+                ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
 
-            //Modify the person
-            a.Status = ActivityStatus.Verified;
-            a.LastUpdated = now;
-            await uow.CommitAsync(cancellationToken);
+            Guid activityGuid = request.ActivityId.ToGuid();
+            var activity = await _repository.FindByIdAsync<DomainActivity>(activityGuid)
+                ?? throw new KeyNotFoundException($"The activity with the given ID ({request.ActivityId}) was not found.");
 
-            return a.ToDTO();
+            activity.Verify(user, now);
+            await _uow.CommitAsync(cancellationToken);
+
+            return activity.ToDTO();
         }
     }
 }

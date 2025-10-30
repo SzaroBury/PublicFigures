@@ -10,7 +10,7 @@
 
 .home-section {
     flex: 1 1 0;
-    background: #f8f9fa;
+    background: var(--bs-secondary-bg);
     padding: 2rem 1rem;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);

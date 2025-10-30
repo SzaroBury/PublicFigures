@@ -123,7 +123,7 @@ function PersonDetailsPage() {
                 <Loading loading={person === null} />
                 {person &&
                     <>
-                        <Person person={person} showActionButtons={true} />
+                        <Person person={person} showTags='true' showDescription='true' showActionButtons={true} />
                         <div className="input-group d-flex">
                             <button
                                 className={`btn btn-outline-primary flex-fill ${detailsMode === 0 ? "active" : ""}`}

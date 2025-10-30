@@ -8,11 +8,21 @@ public class DatabaseInitializer : IDatabaseInitializer
 {
     private readonly RespectDbContext _context;
     private readonly ILogger<DatabaseInitializer> _logger;
+    private readonly IImageService _imageService;
+    private readonly string _seedAssetsPath;
+    
+    private static readonly Dictionary<string, string> PeopleToSeed = new()
+    {
+        { "Lewandowski", "person_lewandowski.jpg" },
+        { "Kubica", "person_kubica.jpg" }
+    };
 
-    public DatabaseInitializer(RespectDbContext context, ILogger<DatabaseInitializer> logger)
+    public DatabaseInitializer(RespectDbContext context, ILogger<DatabaseInitializer> logger, IImageService imageService, string? seedAssetsPath = null)
     {
         _context = context;
         _logger = logger;
+        _imageService = imageService;
+        _seedAssetsPath = seedAssetsPath ?? "../SeedData/images";
     }
 
     public async Task InitializeAsync()
@@ -29,6 +39,50 @@ public class DatabaseInitializer : IDatabaseInitializer
         else
         {
             _logger.LogInformation("No pending migrations found. Database is up-to-date.");
+        }
+
+        _logger.LogInformation("Starting image seeding...");
+        await SeedPersonImagesAsync(); 
+        _logger.LogInformation("Database initialization complete.");
+    }
+    
+    private async Task SeedPersonImagesAsync()
+    {
+        foreach (var entry in PeopleToSeed)
+        {
+            var lastName = entry.Key;
+            var fileName = entry.Value;
+            
+            var person = await _context.Persons.SingleOrDefaultAsync(p => p.LastName == lastName);
+
+            if (person != null && string.IsNullOrEmpty(person.AvatarUrl))
+            {
+                person.AvatarUrl = await SeedSingleImage(person.Id, fileName, "persons");
+            }
+        }
+    }
+
+    private async Task<string> SeedSingleImage(Guid personId, string fileName, string targetFolder)
+    {
+        var sourcePath = Path.Combine(_seedAssetsPath, fileName);
+        if (!File.Exists(sourcePath))
+        {
+            Console.WriteLine($"WARNING: Seed asset not found at {sourcePath}");
+            return string.Empty;
+        }
+
+        var uniqueFileName = "person_" + personId.ToString() + Path.GetExtension(fileName);
+
+        using (var stream = File.OpenRead(sourcePath))
+        {
+            var contentType = fileName.EndsWith(".jpg") ? "image/jpeg" : "image/png";
+
+            return await _imageService.SaveImageAsync(
+                stream,
+                uniqueFileName,
+                contentType,
+                targetFolder
+            );
         }
     }
 }
