@@ -1,10 +1,9 @@
 using MediatR;
-using RespectCounter.Domain.Enums;
-using RespectCounter.Domain.Contracts;
-using RespectCounter.Application.Shared.Enums;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Extensions;
-using DomainComment = RespectCounter.Domain.Model.Comment;
+using RespectCounter.Application.Shared.Contracts;
+using RespectCounter.Domain.Enums;
+using RespectCounter.Application.Shared;
 
 namespace RespectCounter.Application.Comment.Queries;
 
@@ -15,41 +14,32 @@ public record GetCommentsForActivityQuery(
     int PageSize,
     string? Order = null,
     string? UserId = null
-) : IRequest<IEnumerable<CommentDTO>>;
+) : IRequest<PagedResult<CommentDTO>>;
 
-public class GetCommentsForActivityQueryHandler : IRequestHandler<GetCommentsForActivityQuery, IEnumerable<CommentDTO>>
+public class GetCommentsForActivityQueryHandler : IRequestHandler<GetCommentsForActivityQuery, PagedResult<CommentDTO>>
 {
-    private readonly IReadOnlyRepository _repository;
+    private readonly ICommentRepository _commentRepository;
 
-    public GetCommentsForActivityQueryHandler(IReadOnlyRepository repository)
+    public GetCommentsForActivityQueryHandler(ICommentRepository commentRepository)
     {
-        _repository = repository;
+        _commentRepository = commentRepository;
     }
 
-    public async Task<IEnumerable<CommentDTO>> Handle(GetCommentsForActivityQuery request, CancellationToken cancellationToken)
+    public async Task<PagedResult<CommentDTO>> Handle(GetCommentsForActivityQuery request, CancellationToken cancellationToken)
     {
-        Guid? userId = request.UserId.ToNullableGuid();
-
+        var userId = request.UserId.ToNullableGuid();
         var activityId = request.ActivityId.ToGuid();
-        var query = _repository.FindQueryable<DomainComment>(
-            c => c.ActivityId == activityId && c.Status != CommentStatus.Hidden
-        );
+        var order = request.Order.ToCommentSortByEnum();
+        IEnumerable<CommentStatus> statuses = [CommentStatus.Created, CommentStatus.Edited];
 
-        var order = CommentSortBy.LatestAdded;
-        if (!string.IsNullOrWhiteSpace(request.Order))
+        var comments = await _commentRepository.GetPagedCommentsForActivityAsync(activityId, order, statuses, request.Page, request.PageSize, cancellationToken);
+
+        return new PagedResult<CommentDTO>
         {
-            order = request.Order.ToCommentSortByEnum();
-        }
-        var orderedQuery = query.ApplySorting(order);
-        orderedQuery = orderedQuery.ApplyPaging(request.Page, request.PageSize);
-
-        var comments = await _repository.FindListAsync(
-            orderedQuery,
-            ["Children", "Reactions", "CreatedBy", "LastUpdatedBy"],
-            q => q.OrderByDescending(c => c.Created),
-            cancellationToken
-        );
-
-        return comments.Select(c => c.ToDTO(request.Levels, userId));
+            Items = comments.Items.Select(c => c.ToDTO(request.Levels, userId)),
+            TotalItems = comments.TotalItems,
+            PageNumber = comments.PageNumber,
+            PageSize = comments.PageSize,
+        };
     }
 }
