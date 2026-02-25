@@ -6,6 +6,7 @@ public class Tag : Entity
 {
     public Tag(): base() { }
     public Tag(User user, DateTime? now) : base(user, now) {}
+    public Tag(Guid userId, DateTime? now) : base(userId, now) {}
 
     [Required]
     public string Name { get; set; } = string.Empty;

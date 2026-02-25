@@ -11,6 +11,12 @@ public class PersonTag : Auditable
         Tag = tag;
     }
 
+    public PersonTag(Guid personId, Guid tagId, Guid userId, DateTime now) : base(userId, now)
+    {
+        PersonId = personId;
+        TagId = tagId;
+    }
+
     public Guid PersonId { get; init; }
     public virtual Person Person { get; init; } = null!;
     public Guid TagId { get; init; }

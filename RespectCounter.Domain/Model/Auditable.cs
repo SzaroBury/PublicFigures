@@ -15,6 +15,15 @@ public abstract class Auditable
         LastUpdated = now.Value;
     }
 
+    public Auditable(Guid userId, DateTime? now)
+    {
+        if (!now.HasValue) now = DateTime.UtcNow;
+        CreatedById = userId;
+        Created = now.Value;
+        LastUpdatedById = userId;
+        LastUpdated = now.Value;
+    }
+
     public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid CreatedById { get; set; } = Guid.Empty;
     public virtual User CreatedBy { get; set; } = null!;

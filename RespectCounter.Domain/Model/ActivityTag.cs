@@ -2,7 +2,12 @@ namespace RespectCounter.Domain.Model;
 
 public class ActivityTag : Auditable
 {
-    public ActivityTag(): base() { }
+    public ActivityTag() : base() { }
+    public ActivityTag(Guid activityId, Guid tagId, Guid userId, DateTime now) : base(userId, now)
+    {
+        ActivityId = activityId;
+        TagId = tagId;
+    }
     public ActivityTag(Activity activity, Tag tag, User user, DateTime now) : base(user, now)
     {
         ActivityId = activity.Id;
