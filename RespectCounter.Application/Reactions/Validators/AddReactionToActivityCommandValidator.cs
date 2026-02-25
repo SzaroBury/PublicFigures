@@ -1,20 +1,19 @@
 using FluentValidation;
+using RespectCounter.Domain.Enums;
 using RespectCounter.Application.Reactions.Commands;
 using RespectCounter.Application.Shared.Contracts;
 using RespectCounter.Application.Shared.Extensions;
-using RespectCounter.Domain.Contracts;
-using RespectCounter.Domain.Enums;
 
 namespace RespectCounter.Application.Reactions.Validators;
 
 public class AddReactionToActivityCommandValidator : AbstractValidator<AddReactionToActivityCommand>
 {
-    public AddReactionToActivityCommandValidator(IEntityChecker entityChecker, IIdentityService identityService)
+    public AddReactionToActivityCommandValidator(IReadOnlyRepository repo, IIdentityService identityService)
     {
         RuleFor(x => x.ActivityId)
             .NotEmpty().WithMessage("ActivityId is required.")
             .MustBeAValidGuid()
-            .MustBeAnExistingEntityAsync<AddReactionToActivityCommand, Domain.Model.Activity>(entityChecker);
+            .MustBeAnExistingEntityAsync<AddReactionToActivityCommand, Domain.Model.Activity>(repo);
 
         RuleFor(x => x.ReactionType)
             .NotEmpty().WithMessage("ReactionType is required")
@@ -23,6 +22,6 @@ public class AddReactionToActivityCommandValidator : AbstractValidator<AddReacti
         RuleFor(x => x.UserId)
             .NotEmpty().WithMessage("UserId is required.")
             .MustBeAValidGuid()
-            .MustBeAnExistingUserAsync(entityChecker, identityService);
+            .MustBeAnExistingUserAsync(repo, identityService);
     }
 }

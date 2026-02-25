@@ -2,33 +2,27 @@ using FluentValidation;
 using RespectCounter.Application.Activity.Commands;
 using RespectCounter.Application.Shared.Contracts;
 using RespectCounter.Application.Shared.Extensions;
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Domain.Enums;
 
 namespace RespectCounter.Application.Activity.Validators;
 
 public class AddActivityCommandValidator : AbstractValidator<AddActivityCommand>
 {
-    private readonly IEntityChecker _entityChecker;
-
-    public AddActivityCommandValidator(IEntityChecker entityChecker, IIdentityService identityService)
+    public AddActivityCommandValidator(IReadOnlyRepository repository, IIdentityService identityService)
     {
-        _entityChecker = entityChecker;
-
         RuleFor(x => x.PersonId)
             .NotEmpty().WithMessage("PersonId is required.")
             .MustBeAValidGuid()
-            .MustBeAnExistingEntityAsync<AddActivityCommand, Domain.Model.Person>(entityChecker);
+            .MustBeAnExistingEntityAsync<AddActivityCommand, Domain.Model.Person>(repository);
 
         RuleFor(x => x.UserId)
             .NotEmpty().WithMessage("UserId is required.")
             .MustBeAValidGuid()
-            .MustBeAnExistingUserAsync(entityChecker, identityService);
+            .MustBeAnExistingUserAsync(repository, identityService);
 
         RuleFor(x => x.Happend)
-            .Must(x => true)
-            .When(x => !string.IsNullOrWhiteSpace(x.Happend))
-            .MustBeAValidDate();
+            .MustBeAValidDate()
+            .When(x => !string.IsNullOrWhiteSpace(x.Happend));
 
         RuleFor(x => x.Type)
             .NotEmpty().WithMessage("Type is required.")

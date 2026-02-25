@@ -1,6 +1,5 @@
 using FluentValidation;
 using RespectCounter.Application.Shared.Extensions;
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Application.Person.Queries;
 using RespectCounter.Application.Shared.Enums;
 using RespectCounter.Application.Shared.Contracts;
@@ -9,7 +8,7 @@ namespace RespectCounter.Application.Person.Validators;
 
 public class GetPersonsQueryValidator : AbstractValidator<GetPersonsQuery>
 {
-    public GetPersonsQueryValidator(IEntityChecker entityChecker, IIdentityService identityService)
+    public GetPersonsQueryValidator(IReadOnlyRepository repo, IIdentityService identityService)
     {
         RuleFor(x => x.Order)
             .Must(x => true)
@@ -26,6 +25,6 @@ public class GetPersonsQueryValidator : AbstractValidator<GetPersonsQuery>
             .Must(x => true)
             .When(x => !string.IsNullOrWhiteSpace(x.UserId))
             .MustBeAValidGuid()
-            .MustBeAnExistingUserAsync(entityChecker, identityService);
+            .MustBeAnExistingUserAsync(repo, identityService);
     }
 }

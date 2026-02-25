@@ -1,19 +1,18 @@
 using FluentValidation;
 using RespectCounter.Application.Shared.Contracts;
 using RespectCounter.Application.Shared.Extensions;
-using RespectCounter.Application.Tags.Commands;
-using RespectCounter.Domain.Contracts;
+using RespectCounter.Application.Tag.Commands;
 
-namespace RespectCounter.Application.Tags.Validators;
+namespace RespectCounter.Application.Tag.Validators;
 
 public class AddTagToActivityCommandValidator : AbstractValidator<AddTagToActivityCommand>
 {
-    public AddTagToActivityCommandValidator(IEntityChecker entityChecker, IIdentityService identityService)
+    public AddTagToActivityCommandValidator(IReadOnlyRepository repo, IIdentityService identityService)
     {
         RuleFor(x => x.ActivityId)
             .NotEmpty().WithMessage("ActivityId is required.")
             .MustBeAValidGuid()
-            .MustBeAnExistingEntityAsync<AddTagToActivityCommand, Domain.Model.Activity>(entityChecker);
+            .MustBeAnExistingEntityAsync<AddTagToActivityCommand, Domain.Model.Activity>(repo);
 
         RuleFor(x => x.TagName)
             .NotEmpty().WithMessage("TagName is required.");
@@ -21,6 +20,6 @@ public class AddTagToActivityCommandValidator : AbstractValidator<AddTagToActivi
         RuleFor(x => x.UserId)
             .NotEmpty().WithMessage("UserId is required.")
             .MustBeAValidGuid()
-            .MustBeAnExistingUserAsync(entityChecker, identityService);
+            .MustBeAnExistingUserAsync(repo, identityService);
     }
 }

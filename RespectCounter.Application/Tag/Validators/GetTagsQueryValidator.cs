@@ -1,7 +1,7 @@
 using FluentValidation;
-using RespectCounter.Application.Tags.Queries;
+using RespectCounter.Application.Tag.Queries;
 
-namespace RespectCounter.Application.Tags.Validators;
+namespace RespectCounter.Application.Tag.Validators;
 
 public class GetTagsQueryValidator : AbstractValidator<GetTagsQuery>
 {

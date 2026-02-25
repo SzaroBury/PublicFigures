@@ -2,18 +2,17 @@ using FluentValidation;
 using RespectCounter.Application.Person.Commands;
 using RespectCounter.Application.Shared.Contracts;
 using RespectCounter.Application.Shared.Extensions;
-using RespectCounter.Domain.Contracts;
 
 namespace RespectCounter.Application.Person.Validators;
 
 public class UpdatePersonCommandValidator : AbstractValidator<UpdatePersonCommand>
 {
-    public UpdatePersonCommandValidator(IEntityChecker entityChecker, IIdentityService identityService)
+    public UpdatePersonCommandValidator(IReadOnlyRepository repo, IIdentityService identityService)
     {
         RuleFor(x => x.PersonId)
             .NotEmpty().WithMessage("PersonId is required.")
             .MustBeAValidGuid()
-            .MustBeAnExistingEntityAsync<UpdatePersonCommand, Domain.Model.Person>(entityChecker);
+            .MustBeAnExistingEntityAsync<UpdatePersonCommand, Domain.Model.Person>(repo);
 
         RuleFor(x => x.FirstName)
             .NotEmpty().WithMessage("The first name is required.")
@@ -53,7 +52,7 @@ public class UpdatePersonCommandValidator : AbstractValidator<UpdatePersonComman
 
         RuleFor(x => x.UserId)
             .MustBeAValidGuid()
-            .MustBeAnExistingUserAsync(entityChecker, identityService);
+            .MustBeAnExistingUserAsync(repo, identityService);
     }
 
     private bool DateAfterBirthday(string? birthday, string? deathDate)
