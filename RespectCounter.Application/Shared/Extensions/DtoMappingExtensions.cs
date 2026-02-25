@@ -1,6 +1,6 @@
 using System.Security.Claims;
+using System.Text;
 using RespectCounter.Application.Shared.DTOs;
-using RespectCounter.Domain.Model;
 using DomainActivity = RespectCounter.Domain.Model.Activity;
 using DomainComment = RespectCounter.Domain.Model.Comment;
 using DomainPerson = RespectCounter.Domain.Model.Person;
@@ -9,6 +9,8 @@ namespace RespectCounter.Application.Shared.Extensions;
 
 public static class DtoMappingExtensions
 {
+    private static readonly string _defaultAvatarUrl = "default.jpg"; //to move to appsettings
+
     public static ActivityDTO ToDTO(this DomainActivity a, Guid? userGuid = null)
     {
         return new ActivityDTO(
@@ -16,7 +18,7 @@ public static class DtoMappingExtensions
             a.Person?.Id.ToString() ?? "??",
             $"{a.Person?.FirstName ?? "?"} {a.Person?.LastName ?? "?"}",
             a.Person?.Reactions?.Sum(r => (int)r.ReactionType) ?? 0,
-            $"person_{a.Person?.LastName}.jpg",
+            a.Person?.AvatarUrl ?? _defaultAvatarUrl,
             a.Status.ToString(),
             a.CreatedBy?.Username ?? "??",
             a.CreatedById.ToString(),
@@ -25,7 +27,7 @@ public static class DtoMappingExtensions
             a.Location,
             a.Source,
             string.Join(",", a.Tags.Select(pt => pt.Tag.Name)),
-            a.Happend?.ToLongDateString() ?? "",
+            a.Happend?.ToString("o") ?? "",
             a.Comments.Count + a.Comments.Sum(c => c.ChildrenCount),
             (int)a.Type,
             a.Reactions.Sum(r => (int)r.ReactionType),
@@ -43,7 +45,7 @@ public static class DtoMappingExtensions
             $"{p.FirstName} {p.LastName}" + (string.IsNullOrEmpty(p.NickName) ? "" : $" ({p.NickName})"),
             p.Profession,
             p.Description,
-            p.AvatarUrl ?? "",
+            p.AvatarUrl ?? _defaultAvatarUrl,
             p.Nationality,
             p.Birthday?.ToString() ?? "",
             p.DeathDate?.ToString() ?? "",
@@ -64,7 +66,7 @@ public static class DtoMappingExtensions
             c.Id.ToString(),
             c.CreatedBy?.Username ?? "??",
             c.CreatedById.ToString(),
-            c.CreatedBy?.AvatarUrl ?? "",
+            c.CreatedBy?.AvatarUrl ?? _defaultAvatarUrl,
             c.Created.ToString("o"),
             c.Content, 
             c.ActivityId?.ToString() ?? "",
@@ -80,25 +82,40 @@ public static class DtoMappingExtensions
         );
     }
 
-    public static TagDTO ToDTO(this Tag tag)
+    public static TagDTO ToDTO(this Domain.Model.Tag tag)
     {
-        return new TagDTO(tag.Name, tag.Description, tag.Activities.Count, tag.Persons.Count, tag.Count);
+        return new TagDTO(
+            tag.Name, 
+            tag.Description, 
+            tag.Activities.Count, 
+            tag.Persons.Count, 
+            tag.Count
+        );
     }
 
     public static ClaimDTO ToDTO(this Claim claim)
     {
-        return new ClaimDTO(claim.Type, claim.Value);
+        return new ClaimDTO(
+            claim.Type, 
+            claim.Value
+        );
     }
 
     public static SimplePersonDTO ToSimpleDTO(this DomainPerson p)
     {
+        var nickNameSB = new StringBuilder($"{p.FirstName} {p.LastName}");
+        if(!string.IsNullOrEmpty(p.NickName))
+        {
+            nickNameSB.Append($" ({p.NickName})");
+        }
+
         return new SimplePersonDTO(
             p.Id.ToString(),
-            $"{p.FirstName} {p.LastName}" + (string.IsNullOrEmpty(p.NickName) ? "" : $" ({p.NickName})")
+            nickNameSB.ToString()
         );
     }
 
-    public static SimpleTagDTO ToSimpleDTO(this Tag t)
+    public static SimpleTagDTO ToSimpleDTO(this Domain.Model.Tag t)
     {
         return new SimpleTagDTO(
             t.Id.ToString(),
