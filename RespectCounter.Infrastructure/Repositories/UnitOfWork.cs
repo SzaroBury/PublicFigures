@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore.Storage;
+using RespectCounter.Application.Shared.Contracts;
 using RespectCounter.Domain.Contracts;
 
 namespace RespectCounter.Infrastructure.Repositories;

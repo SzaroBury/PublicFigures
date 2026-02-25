@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RespectCounter.Domain.Model;
-using RespectCounter.Domain.Contracts;
+using RespectCounter.Application.Shared.Contracts;
 
 namespace RespectCounter.Infrastructure.Repositories;
 
