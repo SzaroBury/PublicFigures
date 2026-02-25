@@ -1,7 +1,6 @@
 using System.Globalization;
 using FluentValidation;
 using RespectCounter.Application.Shared.Contracts;
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Domain.Model;
 
 namespace RespectCounter.Application.Shared.Extensions;
@@ -12,11 +11,6 @@ public static class ValidationExtensions
     {
         return builder.Must(id =>
         {
-            if (string.IsNullOrWhiteSpace(id))
-            {
-                return false;
-            }
-
             return Guid.TryParse(id, out _);
         })
         .WithMessage("{PropertyName} must be a valid GUID format.");
@@ -26,11 +20,6 @@ public static class ValidationExtensions
     {
         return builder.Must(dateString =>
         {
-            if (string.IsNullOrEmpty(dateString))
-            {
-                return false;
-            }
-
             return DateTime.TryParseExact(
                 dateString,
                 "yyyy-MM-ddTHH:mm:ss.fffZ",
@@ -45,11 +34,6 @@ public static class ValidationExtensions
     {
         return builder.Must(dateString =>
         {
-            if (string.IsNullOrEmpty(dateString))
-            {
-                return false;
-            }
-
             return DateOnly.TryParseExact(
                 dateString,
                 "yyyy-MM-dd",
@@ -64,7 +48,7 @@ public static class ValidationExtensions
     {
         return builder.Must((entity, enumValue, context) =>
         {
-            context.MessageFormatter.AppendArgument("EnumType", nameof(TEnum));
+            context.MessageFormatter.AppendArgument("EnumType", typeof(TEnum).Name);
             return Enum.IsDefined(typeof(TEnum), enumValue);
         })
         .WithMessage("{PropertyName} must be a valid value for {EnumType}.");
@@ -87,7 +71,7 @@ public static class ValidationExtensions
 
     public static IRuleBuilderOptions<T, string?> MustBeAnExistingUserAsync<T>(
         this IRuleBuilder<T, string?> builder,
-        IEntityChecker entityChecker,
+        IReadOnlyRepository repository,
         IIdentityService identityService)
     {
         builder = builder.MustAsync(async (id, cancellationToken) =>
@@ -97,7 +81,7 @@ public static class ValidationExtensions
                 return false;
             }
 
-            return await entityChecker.ExistsAsync<User>(userGuid, cancellationToken);
+            return await repository.ExistsAsync<User>(userGuid, cancellationToken);
         })
         .WithMessage("User profile with the ID '{PropertyValue}' not found.");
 
@@ -115,7 +99,7 @@ public static class ValidationExtensions
     
     public static IRuleBuilderOptions<T, string?> MustBeAnExistingEntityAsync<T, TEntity>(
         this IRuleBuilderOptions<T, string?> builder,
-        IEntityChecker entityChecker) where TEntity : Entity
+        IReadOnlyRepository repository) where TEntity : Entity
     {
         return builder.MustAsync(async (entity, id, context, cancellationToken) =>
         {
@@ -124,8 +108,8 @@ public static class ValidationExtensions
                 return false;
             }
 
-            context.MessageFormatter.AppendArgument("EntityName", nameof(TEntity));
-            return await entityChecker.ExistsAsync<TEntity>(entityGuid, cancellationToken);
+            context.MessageFormatter.AppendArgument("EntityName", typeof(TEntity).Name);
+            return await repository.ExistsAsync<TEntity>(entityGuid, cancellationToken);
         })
         .WithMessage("{EntityName} with the ID '{PropertyValue}' not found.");
     }
