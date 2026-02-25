@@ -1,4 +1,4 @@
-using RespectCounter.Domain.Contracts;
+using RespectCounter.Application.Shared.Contracts;
 
 namespace RespectCounter.Infrastructure.Services;
 
