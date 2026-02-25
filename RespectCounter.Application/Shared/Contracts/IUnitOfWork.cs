@@ -1,8 +1,7 @@
-namespace RespectCounter.Domain.Contracts;
+namespace RespectCounter.Application.Shared.Contracts;
 
-public interface IUnitOfWork : IDisposable
+public interface IUnitOfWork
 {
-    IWriteRepository GetWriteRepository();
     Task<int> CommitAsync(CancellationToken cancellationToken = default);
     Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     Task CommitTransactionAsync(CancellationToken cancellationToken = default);

@@ -1,7 +1,6 @@
-using System.Linq.Expressions;
 using RespectCounter.Domain.Model;
 
-namespace RespectCounter.Domain.Contracts;
+namespace RespectCounter.Application.Shared.Contracts;
 
 public interface IWriteRepository
 {
