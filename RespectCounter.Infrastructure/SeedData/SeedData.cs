@@ -8,8 +8,12 @@ namespace RespectCounter.Infrastructure;
 
 public static class SeedData
 {
+    public static readonly Guid SystemUserId = new("00000000-0000-0000-0000-000000000001");
+
     public static void Seed(ModelBuilder mb)
     {
+        DateTime now = DateTime.UtcNow;
+
         SeedIdentity(mb);
 
         Guid RL = Guid.NewGuid();
@@ -77,22 +81,22 @@ public static class SeedData
             CreateDummyTag(poTag, "PO"),
         });
         mb.Entity<PersonTag>().HasData(
-            new PersonTag() { TagId = sportTag, PersonId = RL },
-            new PersonTag() { TagId = sportTag, PersonId = RK },
-            new PersonTag() { TagId = footballTag, PersonId = RL },
-            new PersonTag() { TagId = fcbarcelonaTag, PersonId = RL },
-            new PersonTag() { TagId = f1Tag, PersonId = RK },
-            new PersonTag() { TagId = wecTag, PersonId = RK },
-            new PersonTag() { TagId = politicsTag, PersonId = AD },
-            new PersonTag() { TagId = politicsTag, PersonId = DT },
-            new PersonTag() { TagId = pisTag, PersonId = AD },
-            new PersonTag() { TagId = poTag, PersonId = DT }
+            new PersonTag(RL, sportTag, SystemUserId, now),
+            new PersonTag(RK, sportTag, SystemUserId, now),
+            new PersonTag(RL, footballTag, SystemUserId, now),
+            new PersonTag(RL, fcbarcelonaTag, SystemUserId, now),
+            new PersonTag(RK, f1Tag, SystemUserId, now),
+            new PersonTag(RK, wecTag, SystemUserId, now),
+            new PersonTag(RK, politicsTag, SystemUserId, now),
+            new PersonTag(DT, politicsTag, SystemUserId, now),
+            new PersonTag(AD, pisTag, SystemUserId, now),
+            new PersonTag(DT, poTag, SystemUserId, now)
         );
         mb.Entity<ActivityTag>().HasData(
-            new ActivityTag() { TagId = sportTag, ActivityId = RLactivity },
-            new ActivityTag() { TagId = footballTag, ActivityId = RLactivity },
-            new ActivityTag() { TagId = sportTag, ActivityId = RKactivity },
-            new ActivityTag() { TagId = f1Tag, ActivityId = RKactivity }
+            new ActivityTag(RLactivity, sportTag, SystemUserId, now),
+            new ActivityTag(RLactivity, footballTag,  SystemUserId, now),
+            new ActivityTag(RKactivity, sportTag, SystemUserId, now),
+            new ActivityTag(RKactivity, f1Tag, SystemUserId, now)
         );
         mb.Entity<PersonReaction>().HasData(new List<PersonReaction>
         {
@@ -135,20 +139,19 @@ public static class SeedData
 
         var hasher = new PasswordHasher<CustomIdentityUser>();
         var now = DateTime.UtcNow;
-        var systemId = SeedConstants.SystemUserId;
 
         var systemIdentity = new CustomIdentityUser
         {
-            Id = systemId,
+            Id = SystemUserId,
             UserName = "system_user",
             NormalizedUserName = "SYSTEM_USER",
         };
         var systemUser = new User
         {
-            Id = systemId,
+            Id = SystemUserId,
             Username = "System",
-            CreatedById = systemId,
-            LastUpdatedById = systemId,
+            CreatedById = SystemUserId,
+            LastUpdatedById = SystemUserId,
             Created = now,
             LastUpdated = now
         };
@@ -159,8 +162,8 @@ public static class SeedData
         {
             Id = adminId,
             Username = "admin",
-            CreatedById = systemId,
-            LastUpdatedById = systemId,
+            CreatedById = SystemUserId,
+            LastUpdatedById = SystemUserId,
             Created = now,
             LastUpdated = now
         };
@@ -183,8 +186,8 @@ public static class SeedData
         {
             Id = userId,
             Username = "user",
-            CreatedById = systemId,
-            LastUpdatedById = systemId,
+            CreatedById = SystemUserId,
+            LastUpdatedById = SystemUserId,
             Created = now,
             LastUpdated = now
         };
@@ -233,7 +236,7 @@ public static class SeedData
         string desc = "Test desc")
     {
         var now = DateTime.UtcNow;
-        var systemUserId = SeedConstants.SystemUserId;
+        var systemUserId = SystemUserId;
         return new Person
         {
             Id = id,
@@ -261,7 +264,7 @@ public static class SeedData
         string desc = "Test desc")
     {
         var now = DateTime.UtcNow;
-        var systemUserId = SeedConstants.SystemUserId;
+        var systemUserId = SystemUserId;
         return new Tag
         {
             Id = id,
@@ -287,7 +290,7 @@ public static class SeedData
         ActivityStatus status = ActivityStatus.NotVerified)
     {
         var now = DateTime.UtcNow;
-        var systemUserId = SeedConstants.SystemUserId;
+        var systemUserId = SystemUserId;
 
         return new Activity
         {
@@ -318,7 +321,7 @@ public static class SeedData
         Guid? parentId = null)
     {
         var now = DateTime.UtcNow;
-        var systemUserId = SeedConstants.SystemUserId;
+        var systemUserId = SystemUserId;
 
         return new Comment
         {
@@ -343,7 +346,7 @@ public static class SeedData
         Guid perId)
     {
         var now = DateTime.UtcNow;
-        var systemUserId = SeedConstants.SystemUserId;
+        var systemUserId = SystemUserId;
 
         return new PersonReaction
         {
@@ -364,7 +367,7 @@ public static class SeedData
         Guid actId)
     {
         var now = DateTime.UtcNow;
-        var systemUserId = SeedConstants.SystemUserId;
+        var systemUserId = SystemUserId;
 
 
         return new ActivityReaction
@@ -386,7 +389,7 @@ public static class SeedData
         Guid comId)
     {
         var now = DateTime.UtcNow;
-        var systemUserId = SeedConstants.SystemUserId;
+        var systemUserId = SystemUserId;
 
         return new CommentReaction
         {
