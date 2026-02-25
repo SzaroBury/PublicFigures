@@ -1,11 +1,11 @@
 using MediatR;
 using RespectCounter.Domain.Model;
-using RespectCounter.Domain.Contracts;
+using RespectCounter.Domain.Enums;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Extensions;
-using PersonDomain = RespectCounter.Domain.Model.Person;
-using RespectCounter.Domain.Enums;
 using RespectCounter.Application.Shared.Contracts;
+using DomainPerson = RespectCounter.Domain.Model.Person;
+using DomainTag = RespectCounter.Domain.Model.Tag;
 
 namespace RespectCounter.Application.Person.Commands;
 
@@ -18,19 +18,23 @@ public record AddPersonCommand(
     string Nationality, 
     string? Birthday, 
     string? DeathDate, 
-    string Tags,
+    IEnumerable<string> Tags,
     string UserId
 ) : IRequest<PersonDTO>;
 
 public class AddPersonCommandHandler : IRequestHandler<AddPersonCommand, PersonDTO>
 {
     private readonly IReadOnlyRepository _repository;
+    private readonly ITagRepository _tagRepository;
+    private readonly IPersonRepository _personRepository;
     private readonly IUnitOfWork _uow;
     private readonly IIdentityService _userService;
 
-    public AddPersonCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow, IIdentityService userService)
+    public AddPersonCommandHandler(IReadOnlyRepository repository, ITagRepository tagRepository, IPersonRepository personRepository, IUnitOfWork uow, IIdentityService userService)
     {
         _repository = repository;
+        _tagRepository = tagRepository;
+        _personRepository = personRepository;
         _uow = uow;
         _userService = userService;
     }
@@ -54,7 +58,7 @@ public class AddPersonCommandHandler : IRequestHandler<AddPersonCommand, PersonD
         } 
 
         DateTime now = DateTime.UtcNow;
-        PersonDomain newPerson = new(user, now)
+        DomainPerson newPerson = new(user, now)
         {
             FirstName = request.FirstName,
             LastName = request.LastName,
@@ -67,26 +71,24 @@ public class AddPersonCommandHandler : IRequestHandler<AddPersonCommand, PersonD
             Status = PersonStatus.NotVerified,
         };
 
-        List<string> tags = request.Tags.Split(",").ToList();
-        tags.Remove("");
-        foreach (string tag in tags)
+        foreach (string tagName in request.Tags)
         {
-            Tag? existingTag = _repository.FindQueryable<Tag>(t => t.Name.ToLower() == tag.ToLower()).FirstOrDefault();
-            if (existingTag == null)
+            DomainTag? tag = await _tagRepository.GetByNameAsync(tagName, cancellationToken);
+            if (tag == null)
             {
-                Tag newTag = new(user, now)
+                tag = new(user, now)
                 {
-                    Name = tag,
+                    Name = tagName,
                     Description = $"Created with {request.FirstName} {request.LastName} person object."
                 };
-                existingTag = _uow.GetWriteRepository().Add(newTag);
+                await _tagRepository.AddTagAsync(tag, cancellationToken);
             }
-            PersonTag personTag = new(newPerson, existingTag, user, now);
+            PersonTag personTag = new(newPerson, tag, user, now);
             newPerson.Tags.Add(personTag);
         }
-        var result = _uow.GetWriteRepository().Add(newPerson);
+        await _personRepository.AddAsync(newPerson, cancellationToken);
         await _uow.CommitAsync(cancellationToken);
 
-        return result.ToDTO(userId);
+        return newPerson.ToDTO(userId);
     }
 }

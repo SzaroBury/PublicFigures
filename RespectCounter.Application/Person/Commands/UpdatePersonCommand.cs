@@ -1,10 +1,9 @@
 using MediatR;
 using RespectCounter.Domain.Model;
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Extensions;
-using DomainPerson = RespectCounter.Domain.Model.Person;
 using RespectCounter.Application.Shared.Contracts;
+using DomainPerson = RespectCounter.Domain.Model.Person;
 
 namespace RespectCounter.Application.Person.Commands;
 
@@ -18,19 +17,23 @@ public record UpdatePersonCommand(
     string Nationality, 
     string? Birthday, 
     string? DeathDate, 
-    string Tags,
+    IEnumerable<string> Tags,
     string UserId
 ) : IRequest<PersonDTO>;
 
 public class UpdatePersonCommandHandler : IRequestHandler<UpdatePersonCommand, PersonDTO>
 {
     private readonly IReadOnlyRepository _repository;
+    private readonly IPersonRepository _personRepository;
+    private readonly ITagRepository _tagRepository;
     private readonly IUnitOfWork _uow;
     private readonly IIdentityService _userService;
 
-    public UpdatePersonCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow, IIdentityService userService)
+    public UpdatePersonCommandHandler(IReadOnlyRepository repository, IPersonRepository personRepository, ITagRepository tagRepository, IUnitOfWork uow, IIdentityService userService)
     {
         _repository = repository;
+        _personRepository = personRepository;
+        _tagRepository = tagRepository;
         _uow = uow;
         _userService = userService;
     }
@@ -42,7 +45,7 @@ public class UpdatePersonCommandHandler : IRequestHandler<UpdatePersonCommand, P
             ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
 
         var personGuid = request.PersonId.ToGuid();
-        var person = await _repository.SingleOrDefaultAsync<DomainPerson>(p => p.Id == personGuid, "Tags.Tag", cancellationToken)
+        var person = await _personRepository.GetByIdAsync(personGuid, cancellationToken)
             ?? throw new InvalidOperationException($"Person with ID {personGuid} not found, despite prior validation.");
 
         var now = DateTime.UtcNow;
@@ -58,20 +61,15 @@ public class UpdatePersonCommandHandler : IRequestHandler<UpdatePersonCommand, P
         person.Updated(user, now);
 
 
-        var newTagNames = request.Tags.ToLower()
-                                     .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                                     .Select(t => t.Trim())
-                                     .Distinct()
-                                     .ToList();
-
+        var updatedTags = request.Tags.Select(t => t.ToLower());
         var currentPersonTags = person.Tags.ToDictionary(pt => pt.Tag.Name.ToLower(), pt => pt);
         var currentTagNames = currentPersonTags.Keys.ToList();
 
         var tagsToRemove = currentTagNames
-            .Except(newTagNames)
+            .Except(updatedTags)
             .ToList();
 
-        var tagsToAdd = newTagNames
+        var tagsToAdd = updatedTags
             .Except(currentTagNames)
             .ToList();
 
@@ -80,30 +78,26 @@ public class UpdatePersonCommandHandler : IRequestHandler<UpdatePersonCommand, P
             if (currentPersonTags.TryGetValue(tagName, out var personTagToRemove))
             {
                 person.Tags.Remove(personTagToRemove);
-                _uow.GetWriteRepository().Update(personTagToRemove);
             }
         }
 
-        if (tagsToAdd.Any())
+        if (tagsToAdd.Count != 0)
         {
-            var existingTags = await _repository.FindListAsync<Tag>(
-                t => tagsToAdd.Contains(t.Name.ToLower()), 
-                cancellationToken: cancellationToken);
-
+            var existingTags = await _tagRepository.GetByNamesAsync(tagsToAdd, cancellationToken);
             var existingTagNames = existingTags.Select(t => t.Name.ToLower()).ToHashSet();
 
             foreach (var newTagName in tagsToAdd)
             {
-                Tag? tagToAdd = existingTags.FirstOrDefault(t => t.Name.Equals(newTagName, StringComparison.OrdinalIgnoreCase));
+                Domain.Model.Tag? tagToAdd = existingTags.FirstOrDefault(t => t.Name.Equals(newTagName, StringComparison.OrdinalIgnoreCase));
 
                 if (tagToAdd is null)
                 {
-                    tagToAdd = new Tag(user, now)
+                    tagToAdd = new Domain.Model.Tag(user, now)
                     {
                         Name = newTagName,
                         Description = $"Created during update of {request.FirstName} {request.LastName}."
                     };
-                    _uow.GetWriteRepository().Add(tagToAdd);
+                    await _tagRepository.AddTagAsync(tagToAdd, cancellationToken);
                 }
 
                 var newPersonTag = new PersonTag(person, tagToAdd, user, now);
@@ -111,9 +105,7 @@ public class UpdatePersonCommandHandler : IRequestHandler<UpdatePersonCommand, P
             }
         }
 
-        _uow.GetWriteRepository().Update(person);
         await _uow.CommitAsync(cancellationToken);
-
         return person.ToDTO(userId);
     }
 }

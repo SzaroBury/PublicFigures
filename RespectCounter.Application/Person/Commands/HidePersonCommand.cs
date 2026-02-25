@@ -1,6 +1,5 @@
 using MediatR;
 using RespectCounter.Domain.Model;
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Extensions;
 using PersonDomain = RespectCounter.Domain.Model.Person;
