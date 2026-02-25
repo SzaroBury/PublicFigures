@@ -5,6 +5,7 @@ using RespectCounter.Application.Shared.Enums;
 using RespectCounter.Application.Shared.Extensions;
 using DomainComment = RespectCounter.Domain.Model.Comment;
 using RespectCounter.Application.Shared.Contracts;
+using RespectCounter.Application.Shared;
 
 namespace RespectCounter.Application.Comment.Queries;
 

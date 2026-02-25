@@ -4,6 +4,7 @@ using RespectCounter.Application.Shared.Extensions;
 using DomainPerson = RespectCounter.Domain.Model.Person;
 using RespectCounter.Domain.Enums;
 using RespectCounter.Application.Shared.Contracts;
+using RespectCounter.Application.Shared;
 
 namespace RespectCounter.Application.Person.Queries;
 
