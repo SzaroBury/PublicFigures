@@ -1,9 +1,8 @@
 using MediatR;
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Extensions;
+using RespectCounter.Application.Shared.Contracts;
 using DomainPerson = RespectCounter.Domain.Model.Person;
-using RespectCounter.Domain.Enums;
 
 namespace RespectCounter.Application.Person.Queries;
 
@@ -20,12 +19,7 @@ public class GetSimplePersonsQueryHandler : IRequestHandler<GetSimplePersonsQuer
 
     public async Task<IEnumerable<SimplePersonDTO>> Handle(GetSimplePersonsQuery request, CancellationToken cancellationToken)
     {
-        var persons = await _repository.FindListAsync<DomainPerson>(
-            p => p.Status != PersonStatus.Hidden,
-            null,
-            q => q.OrderByDescending(c => c.Created),
-            cancellationToken
-        );
+        var persons = await _repository.FindListAsync<DomainPerson>(cancellationToken);
         return persons.Select(p => p.ToSimpleDTO());
     }
 }

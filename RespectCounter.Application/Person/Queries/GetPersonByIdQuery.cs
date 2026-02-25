@@ -1,5 +1,4 @@
 ﻿using MediatR;
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Extensions;
 using DomainPerson = RespectCounter.Domain.Model.Person;
@@ -12,12 +11,12 @@ namespace RespectCounter.Application.Person.Queries
 
     public class GetPersonByIdQueryHandler : IRequestHandler<GetPersonByIdQuery, PersonDTO>
     {
-        private readonly IReadOnlyRepository _repository;
+        private readonly IPersonRepository _personRepository;
         private readonly IIdentityService _userService;
 
-        public GetPersonByIdQueryHandler(IReadOnlyRepository repository, IIdentityService userService)
+        public GetPersonByIdQueryHandler(IPersonRepository personRepository, IIdentityService userService)
         {
-            _repository = repository;
+            _personRepository = personRepository;
             _userService = userService;
         }
 
@@ -26,14 +25,8 @@ namespace RespectCounter.Application.Person.Queries
             Guid? userId = request.UserId.ToNullableGuid();
 
             var personId = request.PersonId.ToGuid();
-            var person = await _repository.SingleOrDefaultAsync<DomainPerson>(
-                    a => a.Id == personId,
-                    "Activities,Comments.Children,Reactions,Tags,CreatedBy,LastUpdatedBy",
-                    cancellationToken
-                ) ?? throw new KeyNotFoundException("The person was not found. Please enter Id of an existing person.");
-
-
-            var comments = await _repository.FindListAsync<DomainComment>(c => c.PersonId == person.Id);
+            var person = await _personRepository.GetByIdAsync(personId, cancellationToken)
+                ?? throw new KeyNotFoundException("The person was not found. Please enter Id of an existing person.");
 
             return person.ToDTO(userId);
         }
