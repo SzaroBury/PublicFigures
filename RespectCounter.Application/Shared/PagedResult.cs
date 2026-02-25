@@ -1,4 +1,4 @@
-using RespectCounter.Application.Shared.DTOs;
+namespace RespectCounter.Application.Shared;
 
 public class PagedResult<T>
 {
@@ -8,5 +8,5 @@ public class PagedResult<T>
     public int PageSize { get; set; }
     public int TotalPages => (int)Math.Ceiling((double)TotalItems / PageSize);
 
-    public IEnumerable<TagDTO>? RelatedTags { get; set; }
+    // public IEnumerable<TagDTO>? RelatedTags { get; set; }
 }
