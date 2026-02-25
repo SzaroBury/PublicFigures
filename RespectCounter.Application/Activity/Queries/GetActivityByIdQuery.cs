@@ -1,8 +1,7 @@
 using MediatR;
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Extensions;
-using DomainActivity = RespectCounter.Domain.Model.Activity;
+using RespectCounter.Application.Shared.Contracts;
 
 namespace RespectCounter.Application.Activity.Queries;
 
@@ -10,11 +9,11 @@ public record GetActivityByIdQuery(string ActivityId, string? UserId) : IRequest
 
 public class GetActivityByIdQueryHandler : IRequestHandler<GetActivityByIdQuery, ActivityDTO>
 {
-    private readonly IReadOnlyRepository _repository;
+    private readonly IActivityRepository _activityRepository;
 
-    public GetActivityByIdQueryHandler(IReadOnlyRepository repository)
+    public GetActivityByIdQueryHandler(IActivityRepository activityRepository)
     {
-        _repository = repository;
+        _activityRepository = activityRepository;
     }
 
     public async Task<ActivityDTO> Handle(GetActivityByIdQuery request, CancellationToken cancellationToken)
@@ -26,11 +25,8 @@ public class GetActivityByIdQueryHandler : IRequestHandler<GetActivityByIdQuery,
         }
 
         var actGuid = request.ActivityId.ToGuid();
-        var act = await _repository.SingleOrDefaultAsync<DomainActivity>(
-                a => a.Id == actGuid,
-                "Person,Comments.Children,Reactions,Tags,CreatedBy,LastUpdatedBy",
-                cancellationToken
-            ) ?? throw new KeyNotFoundException("The activity was not found. Please enter Id of an existing activity.");
+        var act = await _activityRepository.FindByIdAsync(actGuid, cancellationToken)
+            ?? throw new KeyNotFoundException("The activity was not found. Please enter Id of an existing activity.");
 
         return act.ToDTO(userId);
     }

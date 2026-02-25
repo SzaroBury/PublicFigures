@@ -1,10 +1,8 @@
 using MediatR;
-using RespectCounter.Domain.Contracts;
-using RespectCounter.Domain.Model;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Extensions;
-using DomainActivity = RespectCounter.Domain.Model.Activity;
 using RespectCounter.Domain.Enums;
+using RespectCounter.Application.Shared.Contracts;
 
 namespace RespectCounter.Application.Activity.Queries;
 
@@ -12,24 +10,25 @@ public record GetActivitiesQuery(
     string Search, 
     string? PersonId,
     string? Type,
-    string Tags, 
+    IEnumerable<string>? Tags, 
     HashSet<ActivityStatus>? Status,
     string? Order,
     int Page,
     int PageSize,
-    string? UserId
-) : IRequest<IEnumerable<ActivityDTO>>;
+    string? UserId,
+    string? CurrentUserId
+) : IRequest<PagedResult<ActivityDTO>>;
 
-public class GetActivitiesQueryHandler : IRequestHandler<GetActivitiesQuery, IEnumerable<ActivityDTO>>
+public class GetActivitiesQueryHandler : IRequestHandler<GetActivitiesQuery, PagedResult<ActivityDTO>>
 {
-    private readonly IReadOnlyRepository _repository;
+    private readonly IActivityRepository _repository;
 
-    public GetActivitiesQueryHandler(IReadOnlyRepository repository)
+    public GetActivitiesQueryHandler(IActivityRepository repository)
     {
         _repository = repository;
     }
 
-    public async Task<IEnumerable<ActivityDTO>> Handle(GetActivitiesQuery request, CancellationToken cancellationToken)
+    public async Task<PagedResult<ActivityDTO>> Handle(GetActivitiesQuery request, CancellationToken cancellationToken)
     {
         IEnumerable<ActivityStatus> statusFilter;
         if (request.Status == null || request.Status.Count == 0)
@@ -41,68 +40,33 @@ public class GetActivitiesQueryHandler : IRequestHandler<GetActivitiesQuery, IEn
             statusFilter = request.Status!;
         }
 
-        var query = _repository.FindQueryable<DomainActivity>(
-            a => statusFilter.Contains(a.Status)
-        );
+        var sortBy = request.Order.ToActivitySortByEnum();
 
-        if (!string.IsNullOrEmpty(request.PersonId))
-        {
-            var personGuid = request.PersonId.ToGuid();
-            query.Where(a => a.PersonId == personGuid);
-        }
-
+        ActivityType? activityType = null;
         if(!string.IsNullOrEmpty(request.Type))
         {
-            var activityType = request.Type.ToActivityTypeEnum();
-            query = query.Where(a => a.Type == activityType);
+            activityType = request.Type.ToActivityTypeEnum();
         }
 
-        if (!string.IsNullOrEmpty(request.Search))
+        var result = await _repository.FindPagedResultAsync(
+            request.Page, 
+            request.PageSize, 
+            sortBy, 
+            statusFilter, 
+            request.Type?.ToActivityTypeEnum(),
+            request.Search.Trim().ToLower(),
+            request.Tags?.Select(t => t.Trim().ToLower()),
+            request.PersonId.ToNullableGuid(),
+            request.UserId.ToNullableGuid(),
+            cancellationToken
+        );
+
+        return new PagedResult<ActivityDTO>()
         {
-            var search = request.Search.ToLower();
-            query = query.Where(a =>
-                (a.Value != null && a.Value.ToLower().Contains(search)) ||
-                (a.Source != null && a.Source.ToLower().Contains(search)) ||
-                (a.Description != null && a.Description.ToLower().Contains(search)) ||
-                a.Tags.Any(at => at.Tag.Name != null && at.Tag.Name.ToLower().Contains(search))
-            );
-        }
-        
-        if(!string.IsNullOrEmpty(request.Tags))
-        {
-            var tags = request.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(t => t.Trim().ToLower());
-            query = query.Where(
-                a => tags.All(
-                    tag => a.Tags.Any(
-                        at => at.Tag.Name.Equals(tag, StringComparison.CurrentCultureIgnoreCase)
-                    )
-                )
-            );
-        }
-
-        var sortBy = request.Order.ToActivitySortByEnum();
-        var orderedQuery = query.ApplySorting(sortBy);
-
-        orderedQuery = orderedQuery.ApplyPaging(request.Page, request.PageSize);
-
-        var activities = await _repository
-            .FindListAsync(
-                orderedQuery,
-                ["Person", "Comments.Children", "Reactions", "Tags", "CreatedBy", "LastUpdatedBy"],
-                null,
-                cancellationToken
-            );
-
-        Guid? userId = null;
-        if(!string.IsNullOrEmpty(request.UserId))
-        {
-            userId = Guid.Parse(request.UserId);
-            var user = await _repository.FindByIdAsync<User>(userId.Value, cancellationToken)
-                ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
-            userId = user?.Id;
-        }
-
-        return activities.Select(a => a.ToDTO(userId));
+            Items = result.Items.Select(i => i.ToDTO()),
+            TotalItems = result.TotalItems,
+            PageNumber = result.PageNumber,
+            PageSize = result.PageSize
+        };
     }
 }
