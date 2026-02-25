@@ -1,9 +1,7 @@
 using MediatR;
 using RespectCounter.Domain.Model;
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Extensions;
-using DomainComment = RespectCounter.Domain.Model.Comment;
 using RespectCounter.Application.Shared.Contracts;
 
 namespace RespectCounter.Application.Comment.Commands;
@@ -16,25 +14,27 @@ public record UpdateCommentCommand(
 
 public class UpdateCommentCommandHandler : IRequestHandler<UpdateCommentCommand, CommentDTO>
 {
-    private readonly IReadOnlyRepository _repository;
-    private readonly IUnitOfWork _uow;
+    private readonly IReadOnlyRepository _readOnlyRepository;
+    private readonly ICommentRepository _commentRepository;
     private readonly IIdentityService _identityService;
+    private readonly IUnitOfWork _uow;
 
-    public UpdateCommentCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow, IIdentityService identityService)
+    public UpdateCommentCommandHandler(IReadOnlyRepository repository, ICommentRepository commentRepository, IIdentityService identityService, IUnitOfWork uow)
     {
-        _repository = repository;
-        _uow = uow;
+        _readOnlyRepository = repository;
+        _commentRepository = commentRepository;
         _identityService = identityService;
+        _uow = uow;
     }
 
     public async Task<CommentDTO> Handle(UpdateCommentCommand request, CancellationToken cancellationToken)
     {
         var userId = request.UserId.ToGuid();
-        var user = await _repository.FindByIdAsync<User>(userId, cancellationToken)
+        var user = await _readOnlyRepository.FindByIdAsync<User>(userId, cancellationToken)
             ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
 
         var commentGuid = request.CommentId.ToGuid();
-        var comment = await _repository.FindByIdAsync<DomainComment>(commentGuid, cancellationToken)
+        var comment = await _commentRepository.GetCommentByIdAsync(commentGuid, cancellationToken)
             ?? throw new KeyNotFoundException($"The Comment with ID {request.CommentId} was not found in the system, despite the previous validation check.");
 
         var isOwnerOfTheComment = userId == comment.CreatedById;
@@ -48,7 +48,6 @@ public class UpdateCommentCommandHandler : IRequestHandler<UpdateCommentCommand,
         DateTime now = DateTime.UtcNow;
         comment.Edit(request.Content, user, now);
 
-        _uow.GetWriteRepository().Update(comment);
         await _uow.CommitAsync(cancellationToken);
         return comment.ToDTO(1, userId);
     }

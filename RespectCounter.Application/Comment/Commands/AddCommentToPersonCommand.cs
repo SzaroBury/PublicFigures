@@ -1,10 +1,10 @@
 using MediatR;
 using RespectCounter.Domain.Model;
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Extensions;
 using DomainPerson = RespectCounter.Domain.Model.Person;
 using DomainComment = RespectCounter.Domain.Model.Comment;
+using RespectCounter.Application.Shared.Contracts;
 
 namespace RespectCounter.Application.Comment.Commands;
 
@@ -16,23 +16,25 @@ public record AddCommentToPersonCommand(
 
 public class AddCommentToPersonCommandHandler : IRequestHandler<AddCommentToPersonCommand, CommentDTO>
 {
-    private readonly IReadOnlyRepository _repository;
+    private readonly IReadOnlyRepository _readOnlyRepository;
+    private readonly IPersonRepository _personRepository;
     private readonly IUnitOfWork _uow;
 
-    public AddCommentToPersonCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow)
+    public AddCommentToPersonCommandHandler(IReadOnlyRepository readOnlyRepository, IPersonRepository personRepository, IUnitOfWork uow)
     {
-        _repository = repository;
+        _readOnlyRepository = readOnlyRepository;
+        _personRepository = personRepository;
         _uow = uow;
     }
 
     public async Task<CommentDTO> Handle(AddCommentToPersonCommand request, CancellationToken cancellationToken)
     {
         Guid userId = request.UserId.ToGuid();
-        var user = await _repository.FindByIdAsync<User>(userId, cancellationToken)
+        var user = await _readOnlyRepository.FindByIdAsync<User>(userId, cancellationToken)
             ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
 
         Guid personGuid = request.PersonId.ToGuid();
-        DomainPerson targetPerson = await _repository.FindByIdAsync<DomainPerson>(personGuid, cancellationToken)
+        DomainPerson targetPerson = await _personRepository.GetByIdAsync(personGuid, cancellationToken)
             ?? throw new KeyNotFoundException("There is no person object with the given id value.");
 
         DateTime now = DateTime.UtcNow;

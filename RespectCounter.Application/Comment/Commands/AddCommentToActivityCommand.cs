@@ -1,10 +1,9 @@
 using MediatR;
 using RespectCounter.Domain.Model;
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Extensions;
-using DomainActivity = RespectCounter.Domain.Model.Activity;
 using DomainComment = RespectCounter.Domain.Model.Comment;
+using RespectCounter.Application.Shared.Contracts;
 
 namespace RespectCounter.Application.Comment.Commands;
 
@@ -16,23 +15,25 @@ public record AddCommentToActivityCommand(
 
 public class AddCommentToActivityCommandHandler : IRequestHandler<AddCommentToActivityCommand, ActivityDTO>
 {
-    private readonly IReadOnlyRepository _repository;
+    private readonly IReadOnlyRepository _readOnlyRepository;
+    private readonly IActivityRepository _activityRepository;
     private readonly IUnitOfWork _uow;
 
-    public AddCommentToActivityCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow)
+    public AddCommentToActivityCommandHandler(IReadOnlyRepository readOnlyRepository, IActivityRepository activityRepository, IUnitOfWork uow)
     {
-        _repository = repository;
+        _readOnlyRepository = readOnlyRepository;
+        _activityRepository = activityRepository;
         _uow = uow;
     }
 
     public async Task<ActivityDTO> Handle(AddCommentToActivityCommand request, CancellationToken cancellationToken)
     {
         var userId = request.UserId.ToGuid();
-        var user = await _repository.FindByIdAsync<User>(userId, cancellationToken)
+        var user = await _readOnlyRepository.FindByIdAsync<User>(userId, cancellationToken)
                 ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
 
         var activityId = request.ActivityId.ToGuid();
-        var activity = await _repository.FindByIdAsync<DomainActivity>(activityId, cancellationToken)
+        var activity = await _activityRepository.FindByIdAsync(activityId, cancellationToken)
             ?? throw new KeyNotFoundException("There is no activity object with the given id value.");
 
         DateTime now = DateTime.UtcNow;
@@ -42,6 +43,8 @@ public class AddCommentToActivityCommandHandler : IRequestHandler<AddCommentToAc
             Content = request.Content
         };
         activity.Comments.Add(comment);
+        
+        _activityRepository.Update(activity);
         await _uow.CommitAsync(cancellationToken);
         return activity.ToDTO(userId);
     }
