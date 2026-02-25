@@ -12,18 +12,18 @@ public class RespectDbContext : IdentityDbContext<CustomIdentityUser, IdentityRo
     //To add migration:         dotnet-ef migrations add <migration name> -p RespectCounter.Infrastructure -s RespectCounter.API -c RespectDbContext
     //To apply migration:       dotnet-ef update database
 
-    public required DbSet<Activity> Activities { get; set; }
-    public required DbSet<Comment> Comment { get; set; }
-    public required DbSet<Person> Persons { get; set; }
-    public required DbSet<Tag> Tags { get; set; }
-    public required DbSet<User> DomainUsers { get; set; }
+    public DbSet<Activity> Activities { get; set; }
+    public DbSet<Comment> Comment { get; set; }
+    public DbSet<Person> Persons { get; set; }
+    public DbSet<Tag> Tags { get; set; }
+    public DbSet<User> DomainUsers { get; set; }
 
-    public required DbSet<ActivityReaction> ActivityReactions { get; set; }
-    public required DbSet<PersonReaction> PersonReactions { get; set; }
-    public required DbSet<CommentReaction> CommentReactions { get; set; }
+    public DbSet<ActivityReaction> ActivityReactions { get; set; }
+    public DbSet<PersonReaction> PersonReactions { get; set; }
+    public DbSet<CommentReaction> CommentReactions { get; set; }
 
-    public required DbSet<ActivityTag> ActivityTags { get; set; }
-    public required DbSet<PersonTag> PersonTag { get; set; }
+    public DbSet<ActivityTag> ActivityTags { get; set; }
+    public DbSet<PersonTag> PersonTag { get; set; }
 
     public RespectDbContext(DbContextOptions<RespectDbContext> options) : base(options)
     {
