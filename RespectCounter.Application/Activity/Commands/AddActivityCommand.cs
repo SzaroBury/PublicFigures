@@ -1,12 +1,14 @@
-using System.Globalization;
 using MediatR;
+using System.Globalization;
 using RespectCounter.Domain.Model;
-using RespectCounter.Domain.Contracts;
+using RespectCounter.Domain.Enums;
 using RespectCounter.Application.Shared.Extensions;
 using RespectCounter.Application.Shared.DTOs;
+using RespectCounter.Application.Shared.Contracts;
+
 using DomainActivity = RespectCounter.Domain.Model.Activity;
-using DomainPerson = RespectCounter.Domain.Model.Person;
-using RespectCounter.Domain.Enums;
+using DomainPerson   = RespectCounter.Domain.Model.Person;
+using DomainTag      = RespectCounter.Domain.Model.Tag;
 
 namespace RespectCounter.Application.Activity.Commands;
 
@@ -18,27 +20,38 @@ public record AddActivityCommand(
     string Happend, 
     string Source, 
     int Type, 
-    string Tags,
+    IEnumerable<string> Tags,
     string UserId
 ) : IRequest<ActivityDTO>;
 
 public class AddActivityCommandHandler : IRequestHandler<AddActivityCommand, ActivityDTO>
 {
-    private readonly IReadOnlyRepository _repository;
+    private readonly IReadOnlyRepository _readOnlyRepository;
+    private readonly ITagRepository _tagRepository;
+    private readonly IActivityRepository _activityRepository;
     private readonly IUnitOfWork _uow;
 
-    public AddActivityCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow)
+    public AddActivityCommandHandler(
+        IReadOnlyRepository readOnlyRepository, 
+        ITagRepository tagRepository, 
+        IActivityRepository activityRepository, 
+        IUnitOfWork uow)
     {
-        _repository = repository;
+        _readOnlyRepository = readOnlyRepository;
+        _tagRepository = tagRepository;
+        _activityRepository = activityRepository;
         _uow = uow;
     }
 
     public async Task<ActivityDTO> Handle(AddActivityCommand request, CancellationToken cancellationToken)
     {
         var user = await GetUserAsync(request.UserId, cancellationToken);
+        var person = await GetPersonAsync(request.PersonId, cancellationToken);
+
         DateTime now = DateTime.UtcNow;
-        var newActivity = await CreateActivityAsync(request, user, now, cancellationToken);
-        await AddTagsToActivityAsync(request.Tags, user, now, newActivity, cancellationToken);
+        var newActivity = CreateActivity(request, user, person, now, cancellationToken);
+        var tags = await GetAndCreateNonExistingTagsAsync(request.Tags, user, now, newActivity.Id, cancellationToken);
+        AssignTagsToActivity(newActivity, tags, user, now);
         await SaveActivityAsync(newActivity, cancellationToken);
         return newActivity.ToDTO(user.Id);
     }
@@ -46,20 +59,29 @@ public class AddActivityCommandHandler : IRequestHandler<AddActivityCommand, Act
     public async Task<User> GetUserAsync(string userId, CancellationToken cancellationToken)
     {
         Guid userGuid = userId.ToGuid();
-        return await _repository.FindByIdAsync<User>(userGuid, cancellationToken)
+        return await _readOnlyRepository.FindByIdAsync<User>(userGuid, cancellationToken)
             ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
     }
 
-    public async Task<DomainActivity> CreateActivityAsync(AddActivityCommand request, User user, DateTime now, CancellationToken cancellationToken)
+    public async Task<DomainPerson> GetPersonAsync(string personId, CancellationToken cancellationToken)
     {
-        Guid personGuid = Guid.Parse(request.PersonId);
-        DomainPerson person = await _repository.FindByIdAsync<DomainPerson>(personGuid, cancellationToken)
-            ?? throw new InvalidOperationException($"The Person with ID {request.PersonId} was not found in the system, despite the previous validation check.");
+        Guid personGuid = Guid.Parse(personId);
+        return await _readOnlyRepository.FindByIdAsync<DomainPerson>(personGuid, cancellationToken)
+            ?? throw new InvalidOperationException($"The Person with ID {personId} was not found in the system, despite the previous validation check.");
+    }
 
+    public DomainActivity CreateActivity(AddActivityCommand request, User user, DomainPerson person, DateTime now, CancellationToken cancellationToken)
+    {
         DateTime? happend = null;
         if (!string.IsNullOrEmpty(request.Happend))
         {
-            _ = DateTime.TryParseExact(request.Happend, "yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate);
+            _ = DateTime.TryParseExact(
+                request.Happend, 
+                "yyyy-MM-ddTHH:mm:ss.fffZ", 
+                CultureInfo.InvariantCulture, 
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, 
+                out DateTime parsedDate
+            );
             happend = parsedDate;
         }
 
@@ -75,33 +97,41 @@ public class AddActivityCommandHandler : IRequestHandler<AddActivityCommand, Act
         };
     }
 
-    private async Task AddTagsToActivityAsync(string tagsString, User user, DateTime now, DomainActivity newActivity, CancellationToken cancellationToken)
+    private async Task<IEnumerable<DomainTag>> GetAndCreateNonExistingTagsAsync(IEnumerable<string> inputTags, User user, DateTime now, Guid activityId, CancellationToken cancellationToken)
     {
-        List<string> tags = tagsString.Split(",").ToList();
-        foreach (string tag in tags)
+        var uniqueNames = inputTags
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Select(t => t.Trim().ToLower())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var existingTags = await _tagRepository.GetByNamesAsync(uniqueNames, cancellationToken);
+        var existingNamesSet = new HashSet<string>(existingTags.Select(t => t.Name), StringComparer.OrdinalIgnoreCase);
+        var tagsToCreate = uniqueNames
+            .Where(t => !existingNamesSet.Contains(t))
+            .Select(tag => new DomainTag(user, now) { Name = tag, Description = $"Created with '{activityId}' activity object." })
+            .ToList();
+
+        foreach (DomainTag tag in tagsToCreate)
         {
-            Tag? existingTag = await _repository.SingleOrDefaultAsync<Tag>(t => t.Name.ToLower() == tag.ToLower(), cancellationToken: cancellationToken);
-            if (existingTag == null)
-            {
-                Tag newTag = new Tag()
-                {
-                    Name = tag,
-                    Description = $"Created with '{newActivity.Id}' activity object.",
-                    Created = now,
-                    CreatedById = Guid.Empty,
-                    LastUpdated = now,
-                    LastUpdatedById = Guid.Empty
-                };
-                existingTag = _uow.GetWriteRepository().Add(newTag);
-            }
-            ActivityTag activityTag = new(newActivity, existingTag, user, now);
-            newActivity.Tags.Add(activityTag);
+            await _tagRepository.AddTagAsync(tag, cancellationToken);
+        }
+
+        return existingTags.Union(tagsToCreate);
+    }
+
+    private void AssignTagsToActivity(DomainActivity activity, IEnumerable<DomainTag> tags, User user, DateTime now)
+    {
+        foreach(DomainTag tag in tags)
+        {
+            var activityTag = new ActivityTag(activity, tag, user, now);
+            activity.Tags.Add(activityTag);
         }
     }
 
     private async Task SaveActivityAsync(DomainActivity newActivity, CancellationToken cancellationToken)
     {
-        _uow.GetWriteRepository().Add(newActivity);
+        _activityRepository.Add(newActivity);
         await _uow.CommitAsync(cancellationToken);
     }
 }
