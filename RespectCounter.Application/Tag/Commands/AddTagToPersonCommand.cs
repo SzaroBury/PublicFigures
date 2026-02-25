@@ -1,12 +1,12 @@
 using MediatR;
 using RespectCounter.Domain.Model;
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Application.Shared.Extensions;
-using DomainPerson = RespectCounter.Domain.Model.Person;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Contracts;
+using DomainPerson = RespectCounter.Domain.Model.Person;
+using DomainTag = RespectCounter.Domain.Model.Tag;
 
-namespace RespectCounter.Application.Tags.Commands;
+namespace RespectCounter.Application.Tag.Commands;
 
 public record AddTagToPersonCommand(
     string PersonId,
@@ -16,47 +16,53 @@ public record AddTagToPersonCommand(
 
 public class AddTagToPersonCommandHandler : IRequestHandler<AddTagToPersonCommand, PersonDTO>
 {
-    private readonly IReadOnlyRepository _repository;
+    private readonly IReadOnlyRepository _roRepository;
+    private readonly IPersonRepository _personRepository;
+    private readonly ITagRepository _tagRepository;
     private readonly IUnitOfWork _uow;
-    private readonly IIdentityService _userService;
 
-    public AddTagToPersonCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow, IIdentityService userService)
+    public AddTagToPersonCommandHandler(
+        IReadOnlyRepository roRepository, 
+        IPersonRepository personRepository,
+        ITagRepository tagRepository,
+        IUnitOfWork uow)
     {
-        _repository = repository;
+        _roRepository = roRepository;
+        _personRepository = personRepository;
+        _tagRepository = tagRepository;
         _uow = uow;
-        _userService = userService;
     }
 
     public async Task<PersonDTO> Handle(AddTagToPersonCommand request, CancellationToken cancellationToken)
     {
         var userId = request.UserId.ToGuid();
-        var user = await _repository.FindByIdAsync<User>(userId, cancellationToken)
+        var user = await _roRepository.FindByIdAsync<User>(userId, cancellationToken)
             ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
 
         var personId = request.PersonId.ToGuid();
-        DomainPerson targetPerson = await _repository.SingleOrDefaultAsync<DomainPerson>(p => p.Id == personId, "Tags")
+        DomainPerson targetPerson = await _personRepository.GetByIdAsync(personId, cancellationToken)
             ?? throw new InvalidOperationException($"The Person with ID {request.PersonId} was not found in the system, despite the previous validation check.");
 
-        Tag? existingTag = _repository.FindQueryable<Tag>(t => t.Name.ToLower() == request.TagName.ToLower()).FirstOrDefault();
         var now = DateTime.UtcNow;
-        if(existingTag == null)
+        DomainTag? tag = await _tagRepository.GetByNameAsync(request.TagName.ToLower(), cancellationToken);
+        if(tag == null)
         {
-            Tag newTag = new(user, now)
+            tag = new(user, now)
             {
                 Name = request.TagName,
                 Description = $"Created for {targetPerson.FirstName} {targetPerson.LastName} person object."
             };
-            existingTag = _uow.GetWriteRepository().Add(newTag);
+            await _tagRepository.AddTagAsync(tag, cancellationToken);
         }
-        else if(targetPerson.Tags.Any(pt => pt.Tag.Name.ToLower() == existingTag.Name.ToLower()))
+        else if(targetPerson.Tags.Any(pt => pt.Tag.Name.ToLower() == tag.Name.ToLower()))
         {
             throw new InvalidOperationException("The pointed person already has the given tag.");
         }
-        PersonTag personTag = new(targetPerson, existingTag, user, now);
+
+        PersonTag personTag = new(targetPerson, tag, user, now);
         targetPerson.Tags.Add(personTag);
 
         await _uow.CommitAsync(cancellationToken);
-
         return targetPerson.ToDTO(userId);
     }
 }

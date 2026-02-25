@@ -1,12 +1,12 @@
 using MediatR;
 using RespectCounter.Domain.Model;
-using RespectCounter.Domain.Contracts;
+using RespectCounter.Application.Shared.Contracts;
 using RespectCounter.Application.Shared.DTOs;
 using RespectCounter.Application.Shared.Extensions;
 using DomainActivity = RespectCounter.Domain.Model.Activity;
-using RespectCounter.Application.Shared.Contracts;
+using DomainTag = RespectCounter.Domain.Model.Tag;
 
-namespace RespectCounter.Application.Tags.Commands
+namespace RespectCounter.Application.Tag.Commands
 {
     public record AddTagToActivityCommand(
         string ActivityId,
@@ -16,49 +16,49 @@ namespace RespectCounter.Application.Tags.Commands
 
     public class AddTagToActivityCommandHandler : IRequestHandler<AddTagToActivityCommand, ActivityDTO>
     {
-        private readonly IReadOnlyRepository _repository;
+        private readonly IReadOnlyRepository _roRepository;
+        private readonly IActivityRepository _activityRepository;
+        private readonly ITagRepository _tagRepository;
         private readonly IUnitOfWork _uow;
-        private readonly IIdentityService _userService;
 
-        public AddTagToActivityCommandHandler(IReadOnlyRepository repository, IUnitOfWork uow, IIdentityService userService)
+        public AddTagToActivityCommandHandler(
+            IReadOnlyRepository roRepository, 
+            IActivityRepository activityRepository,
+            ITagRepository tagRepository,
+            IUnitOfWork uow)
         {
-            _repository = repository;
+            _roRepository = roRepository;
+            _activityRepository = activityRepository;
+            _tagRepository = tagRepository;
             _uow = uow;
-            _userService = userService;
         }
 
         public async Task<ActivityDTO> Handle(AddTagToActivityCommand request, CancellationToken cancellationToken)
         {
             var userId = request.UserId.ToGuid();
-            var user = await _repository.FindByIdAsync<User>(userId, cancellationToken)
+            var user = await _roRepository.FindByIdAsync<User>(userId, cancellationToken)
                 ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
 
             var activityId = request.ActivityId.ToGuid();
-            DomainActivity targetActivity = await _repository.SingleOrDefaultAsync<DomainActivity>(
-                a => a.Id == activityId,
-                "Tags",
-                cancellationToken)
+            DomainActivity targetActivity = await _activityRepository.FindByIdAsync(activityId, cancellationToken)
                 ?? throw new InvalidOperationException($"The Activity with ID {request.ActivityId} was not found in the system, despite the previous validation check.");
                 
-            Tag? existingTag = _repository.FindQueryable<Tag>(
-                t => t.Name.Equals(request.TagName, StringComparison.CurrentCultureIgnoreCase)
-            ).FirstOrDefault();
-
             DateTime now = DateTime.UtcNow;
-            if (existingTag == null)
+            DomainTag? tag = await _tagRepository.GetByNameAsync(request.TagName.ToLower(), cancellationToken);
+            if (tag == null)
             {
-                Tag newTag = new(user, now)
+                tag = new(user, now)
                 {
                     Name = request.TagName,
-                    Description = $"Created for {targetActivity.Id} activity object."
+                    Description = $"Created for '{targetActivity.Id}' activity object."
                 };
-                existingTag = _uow.GetWriteRepository().Add(newTag);
+                await _tagRepository.AddTagAsync(tag);
             }
-            else if (targetActivity.Tags.Any(at => at.Tag.Name.ToLower() == existingTag.Name.ToLower()))
+            else if (targetActivity.Tags.Any(at => at.Tag.Name.ToLower() == tag.Name.ToLower()))
             {
                 throw new InvalidOperationException("The pointed activity already has the given tag.");
             }
-            ActivityTag activityTag = new(targetActivity, existingTag, user, now);
+            ActivityTag activityTag = new(targetActivity, tag, user, now);
             targetActivity.Tags.Add(activityTag);
 
             await _uow.CommitAsync(cancellationToken);
