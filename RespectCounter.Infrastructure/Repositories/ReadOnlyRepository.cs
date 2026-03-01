@@ -22,9 +22,9 @@ public class ReadOnlyRepository : IReadOnlyRepository
         return dbContext.Set<T>().AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     }
 
-    public async Task<bool> ExistsAsync<T>(Guid entityId, CancellationToken cancellationToken) where T : Entity
+    public Task<bool> ExistsAsync<T>(Guid entityId, CancellationToken cancellationToken) where T : Entity
     {
-        return await dbContext.Set<T>().AsNoTracking().AnyAsync(entity => entity.Id == entityId);
+        return dbContext.Set<T>().AsNoTracking().AnyAsync(entity => entity.Id == entityId);
     }
 
     public Task<List<T>> FindListAsync<T>(
