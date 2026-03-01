@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using RespectCounter.Domain.Model;
 using RespectCounter.Application.Shared.Contracts;
