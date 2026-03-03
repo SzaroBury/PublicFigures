@@ -5,7 +5,6 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 
-using RespectCounter.Domain.Contracts;
 using RespectCounter.Application.Shared;
 using RespectCounter.Application.Shared.Behaviors;
 using RespectCounter.Application.Shared.Contracts;
@@ -39,7 +38,7 @@ builder.Services.AddControllers(); // .AddJsonOptions(o => o.JsonSerializerOptio
 if (builder.Configuration["DB"] == "InMemory")
 {
     builder.Services.AddDbContext<RespectDbContext>(options => options.UseInMemoryDatabase("RespectCounterDB"));
-    Console.WriteLine("The server is going to use an in-memory database.");
+    Console.WriteLine("Initialization info: the server is going to use an in-memory database.");
 }
 else
 {
@@ -61,11 +60,14 @@ builder.Services.AddScoped<IDatabaseInitializer, DatabaseInitializer>(provider =
     return new DatabaseInitializer(context, logger, imageService, seedAssetsPath);
 });
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<IWriteRepository, WriteRepository>();
 builder.Services.AddScoped<IReadOnlyRepository, ReadOnlyRepository>();
+builder.Services.AddScoped<IActivityRepository, ActivityRepository>();
+builder.Services.AddScoped<IPersonRepository, PersonRepository>();
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddScoped<ITagRepository, TagRepository>();
+builder.Services.AddScoped<IReactionRepository, ReactionRepository>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
-builder.Services.AddScoped<IEntityChecker, EntityChecker>();
 builder.Services.AddScoped<IImageService, LocalImageService>(provider =>
 {
     var env = provider.GetRequiredService<IWebHostEnvironment>();
@@ -73,7 +75,7 @@ builder.Services.AddScoped<IImageService, LocalImageService>(provider =>
 });
 builder.Services.AddMediatR(cfg =>
 {
-    cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
+    cfg.RegisterServicesFromAssembly(typeof(ApplicationLayer).Assembly);
     cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
 
