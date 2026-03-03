@@ -67,7 +67,7 @@ public class DatabaseInitializer : IDatabaseInitializer
         var sourcePath = Path.Combine(_seedAssetsPath, filePath);
         if (!File.Exists(sourcePath))
         {
-            Console.WriteLine($"WARNING: Seed asset not found at {sourcePath}");
+            _logger.LogWarning($"Seed asset not found at {sourcePath}");
             return string.Empty;
         }
 
