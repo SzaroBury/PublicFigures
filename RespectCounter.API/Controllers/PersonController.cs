@@ -27,8 +27,8 @@ public class PersonController: ControllerBase
     #region Queries
     [HttpGet("/api/persons")]
     public async Task<IActionResult> GetVerifiedPersons(
+        [FromBody] IEnumerable<string> tags,
         [FromQuery] string search = "",
-        string tags = "",
         [FromQuery] string order = "",
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)
@@ -48,8 +48,8 @@ public class PersonController: ControllerBase
 
     [HttpGet("/api/persons/all")]
     public async Task<IActionResult> GetPersons(
+        [FromBody] IEnumerable<string> tags,
         [FromQuery] string search = "",
-        string tags = "",
         [FromQuery] string order = "",
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)

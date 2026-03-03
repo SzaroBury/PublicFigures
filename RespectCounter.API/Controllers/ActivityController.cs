@@ -29,9 +29,9 @@ public class ActivityController: ControllerBase
     #region Queries
     [HttpGet("/api/activities/all")]
     public async Task<IActionResult> GetActivities(
+        [FromBody] IEnumerable<string> tags,
         [FromQuery] string search = "",
         [FromQuery] string order = "",
-        [FromQuery] string tags = "",
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)
     {
@@ -45,6 +45,7 @@ public class ActivityController: ControllerBase
             order,
             page,
             pageSize,
+            null,
             User.TryGetCurrentUserId());
         var result = await _mediator.Send(query);
 
@@ -53,9 +54,9 @@ public class ActivityController: ControllerBase
 
     [HttpGet("/api/activities")]
     public async Task<IActionResult> GetVerifiedActivities(
+        [FromBody] List<string> tags,
         [FromQuery] string search = "",
         [FromQuery] string order = "",
-        [FromQuery] string tags = "",
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)
     {
@@ -69,6 +70,7 @@ public class ActivityController: ControllerBase
             order,
             page,
             pageSize,
+            null,
             User.TryGetCurrentUserId());
         var result = await _mediator.Send(query);
 
@@ -89,11 +91,12 @@ public class ActivityController: ControllerBase
             "",
             personId,
             type,
-            "",
+            null,
             onlyVerified.ToActivityStatusHashSet(),
             order,
             page,
             pageSize,
+            null,
             User.TryGetCurrentUserId());
         var result = await _mediator.Send(query);
 
