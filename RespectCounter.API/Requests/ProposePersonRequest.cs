@@ -9,5 +9,5 @@ public record ProposePersonRequest(
     string Nationality,
     string? Birthday, 
     string? DeathDate, 
-    string Tags
+    IEnumerable<string> Tags
 );

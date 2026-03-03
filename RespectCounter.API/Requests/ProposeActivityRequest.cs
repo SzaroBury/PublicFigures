@@ -8,5 +8,5 @@ public record ProposeActivityRequest(
     string? Location, 
     string? Happend, 
     string Source, 
-    string Tags
+    IEnumerable<string> Tags
 );
