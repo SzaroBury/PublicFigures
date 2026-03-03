@@ -2,8 +2,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RespectCounter.API.Extensions;
-using RespectCounter.Application.Tags.Commands;
-using RespectCounter.Application.Tags.Queries;
+using RespectCounter.Application.Tag.Commands;
+using RespectCounter.Application.Tag.Queries;
 using RespectCounter.Domain.Model;
 
 namespace RespectCounter.API.Controllers;
