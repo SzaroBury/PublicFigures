@@ -48,11 +48,11 @@ public class PersonController: ControllerBase
 
     [HttpGet("/api/persons/all")]
     public async Task<IActionResult> GetPersons(
-        [FromBody] IEnumerable<string> tags,
-        [FromQuery] string search = "",
-        [FromQuery] string order = "",
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10)
+        IEnumerable<string> tags,
+        string search = "",
+        string order = "",
+        int page = 1,
+        int pageSize = 10)
     {
         _logger.LogInformation($"{DateTime.Now}: GetPersons(search: '{search}', order: '{order}')");
         var query = new GetPersonsQuery(
