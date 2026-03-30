@@ -83,7 +83,7 @@ public class UpdatePersonCommandHandler : IRequestHandler<UpdatePersonCommand, P
 
         if (tagsToAdd.Count != 0)
         {
-            var existingTags = await _tagRepository.GetByNamesAsync(tagsToAdd, cancellationToken);
+            var existingTags = await _tagRepository.GetByNamesWithoutTrackingAsync(tagsToAdd, cancellationToken);
             var existingTagNames = existingTags.Select(t => t.Name.ToLower()).ToHashSet();
 
             foreach (var newTagName in tagsToAdd)
@@ -97,7 +97,7 @@ public class UpdatePersonCommandHandler : IRequestHandler<UpdatePersonCommand, P
                         Name = newTagName,
                         Description = $"Created during update of {request.FirstName} {request.LastName}."
                     };
-                    await _tagRepository.AddTagAsync(tagToAdd, cancellationToken);
+                    _tagRepository.AddTag(tagToAdd);
                 }
 
                 var newPersonTag = new PersonTag(person, tagToAdd, user, now);

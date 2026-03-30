@@ -81,7 +81,7 @@ public class AddPersonCommandHandler : IRequestHandler<AddPersonCommand, PersonD
                     Name = tagName,
                     Description = $"Created with {request.FirstName} {request.LastName} person object."
                 };
-                await _tagRepository.AddTagAsync(tag, cancellationToken);
+                _tagRepository.AddTag(tag);
             }
             PersonTag personTag = new(newPerson, tag, user, now);
             newPerson.Tags.Add(personTag);

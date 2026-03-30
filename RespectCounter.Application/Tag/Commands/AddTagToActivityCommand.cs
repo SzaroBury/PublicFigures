@@ -52,7 +52,7 @@ namespace RespectCounter.Application.Tag.Commands
                     Name = request.TagName,
                     Description = $"Created for '{targetActivity.Id}' activity object."
                 };
-                await _tagRepository.AddTagAsync(tag);
+                _tagRepository.AddTag(tag);
             }
             else if (targetActivity.Tags.Any(at => at.Tag.Name.ToLower() == tag.Name.ToLower()))
             {

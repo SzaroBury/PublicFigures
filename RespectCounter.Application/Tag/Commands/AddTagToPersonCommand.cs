@@ -52,7 +52,7 @@ public class AddTagToPersonCommandHandler : IRequestHandler<AddTagToPersonComman
                 Name = request.TagName,
                 Description = $"Created for {targetPerson.FirstName} {targetPerson.LastName} person object."
             };
-            await _tagRepository.AddTagAsync(tag, cancellationToken);
+            _tagRepository.AddTag(tag);
         }
         else if(targetPerson.Tags.Any(pt => pt.Tag.Name.ToLower() == tag.Name.ToLower()))
         {

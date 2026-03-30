@@ -72,7 +72,7 @@ public class UpdateActivityCommandHandler : IRequestHandler<UpdateActivityComman
 
         var uniqueNamesLowercase = uniqueNames.Select(t => t.ToLower());
 
-        var existingTags = await _tagRepository.GetByNamesAsync(uniqueNamesLowercase, cancellationToken);
+        var existingTags = await _tagRepository.GetByNamesWithoutTrackingAsync(uniqueNamesLowercase, cancellationToken);
         var existingNamesSet = new HashSet<string>(existingTags.Select(t => t.Name), StringComparer.OrdinalIgnoreCase);
 
         var tagsToCreate = uniqueNames
@@ -82,7 +82,7 @@ public class UpdateActivityCommandHandler : IRequestHandler<UpdateActivityComman
 
         foreach (DomainTag tag in tagsToCreate)
         {
-            await _tagRepository.AddTagAsync(tag, cancellationToken);
+            _tagRepository.AddTag(tag);
         }
 
         return existingTags.Union(tagsToCreate);

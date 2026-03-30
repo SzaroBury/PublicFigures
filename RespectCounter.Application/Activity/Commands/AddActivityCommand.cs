@@ -105,7 +105,7 @@ public class AddActivityCommandHandler : IRequestHandler<AddActivityCommand, Act
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var existingTags = await _tagRepository.GetByNamesAsync(uniqueNames, cancellationToken);
+        var existingTags = await _tagRepository.GetByNamesWithoutTrackingAsync(uniqueNames, cancellationToken);
         var existingNamesSet = new HashSet<string>(existingTags.Select(t => t.Name), StringComparer.OrdinalIgnoreCase);
         var tagsToCreate = uniqueNames
             .Where(t => !existingNamesSet.Contains(t))
@@ -114,7 +114,7 @@ public class AddActivityCommandHandler : IRequestHandler<AddActivityCommand, Act
 
         foreach (DomainTag tag in tagsToCreate)
         {
-            await _tagRepository.AddTagAsync(tag, cancellationToken);
+            _tagRepository.AddTag(tag);
         }
 
         return existingTags.Union(tagsToCreate);

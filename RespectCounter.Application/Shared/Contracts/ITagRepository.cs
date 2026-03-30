@@ -11,5 +11,5 @@ public interface ITagRepository
     Task<IEnumerable<DomainTag>> GetByNamesWithoutTrackingAsync(IEnumerable<string> names, CancellationToken cancellationToken = default);
     Task<DomainTag> GetByNameAsync(string name, CancellationToken cancellationToken = default);
 
-    Task AddTagAsync(DomainTag tag, CancellationToken cancellationToken = default);
+    void AddTag(DomainTag tag);
 }
