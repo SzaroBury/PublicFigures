@@ -6,55 +6,59 @@ using RespectCounter.Application.Shared.Contracts;
 
 using DomainComment = RespectCounter.Domain.Model.Comment;
 
-namespace RespectCounter.Application.Comment.Commands
+namespace RespectCounter.Application.Comment.Commands;
+
+public record AddCommentToParentCommentCommand(
+    string ParentCommentId,
+    string Content,
+    string UserId
+) : IRequest<CommentDTO>;
+
+public class AddCommentToParentCommentCommandHandler : IRequestHandler<AddCommentToParentCommentCommand, CommentDTO>
 {
-    public record AddCommentToParentCommentCommand(
-        string ParentCommentId,
-        string Content,
-        string UserId
-    ) : IRequest<CommentDTO>;
+    private readonly IReadOnlyRepository _readOnlyRepository;
+    private readonly ICommentRepository _commentRepository;
+    private readonly IUnitOfWork _uow;
 
-    public class AddCommentToParentCommentCommandHandler : IRequestHandler<AddCommentToParentCommentCommand, CommentDTO>
+    public AddCommentToParentCommentCommandHandler(IReadOnlyRepository readOnlyRepository, ICommentRepository commentRepository, IUnitOfWork uow)
     {
-        private readonly IReadOnlyRepository _readOnlyRepository;
-        private readonly ICommentRepository _commentRepository;
-        private readonly IUnitOfWork _uow;
+        _readOnlyRepository = readOnlyRepository;
+        _commentRepository = commentRepository;
+        _uow = uow;
+    }
 
-        public AddCommentToParentCommentCommandHandler(IReadOnlyRepository readOnlyRepository, ICommentRepository commentRepository, IUnitOfWork uow)
+    public async Task<CommentDTO> Handle(AddCommentToParentCommentCommand request, CancellationToken cancellationToken)
+    {
+        try
         {
-            _readOnlyRepository = readOnlyRepository;
-            _commentRepository = commentRepository;
-            _uow = uow;
-        }
-
-        public async Task<CommentDTO> Handle(AddCommentToParentCommentCommand request, CancellationToken cancellationToken)
-        {
+            await _uow.BeginTransactionAsync(cancellationToken);
+            
             var userId = request.UserId.ToGuid();
             var user = await _readOnlyRepository.FindByIdAsync<User>(userId, cancellationToken)
                 ?? throw new InvalidOperationException($"The User with ID {userId} was not found in the system, despite the previous validation check.");
 
             var parentCommentId = request.ParentCommentId.ToGuid();
-            var parentComment = await _commentRepository.GetCommentByIdAsync(parentCommentId, cancellationToken) // Include("Parent")
+            var parentComment = await _commentRepository.GetCommentByIdAsync(parentCommentId, cancellationToken)
                 ?? throw new KeyNotFoundException("There is no comment with the given id value.");
 
-            parentComment.DirectChildrenCount++;
-            parentComment.AllChildrenCount++;
-
             DateTime now = DateTime.UtcNow;
-            DomainComment comment = new(user, now)
+            DomainComment comment = new(user.Id)
             {
                 ParentId = parentComment.Id,
                 Content = request.Content,
             };
-            parentComment.Children.Add(comment);
-
-            if(parentComment.ParentId.HasValue)
-            {
-                await _commentRepository.UpdateAncestorsCountsAsync(parentComment.ParentId.Value, cancellationToken);
-            }
-
+            _commentRepository.AddComment(comment);
             await _uow.CommitAsync(cancellationToken);
-            return parentComment.ToDTO(1, user.Id);
+
+            await _commentRepository.UpdateAncestorsCountsDirectAsync(parentCommentId, cancellationToken);
+            await _uow.CommitTransactionAsync(cancellationToken);
+            
+            return comment.ToDTO(0, user.Id);    
+        }
+        catch (Exception)
+        {
+            await _uow.RollbackTransactionAsync(cancellationToken);
+            throw;
         }
     }
 }

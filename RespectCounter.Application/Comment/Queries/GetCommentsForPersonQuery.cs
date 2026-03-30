@@ -33,7 +33,7 @@ public class GetCommentsForPersonQueryHandler : IRequestHandler<GetCommentsForPe
         var personId = request.PersonId.ToGuid();
         var order = CommentSortBy.LatestAdded;
         order = request.Order.ToCommentSortByEnum();
-        IEnumerable<CommentStatus> statuses = [CommentStatus.Created, CommentStatus.Edited];
+        IReadOnlyCollection<CommentStatus> statuses = [CommentStatus.Created, CommentStatus.Edited];
 
         var pagedComments = await _commentRepository.GetPagedCommentsForPersonAsync(personId, order, statuses, request.Page, request.PageSize, cancellationToken);
 

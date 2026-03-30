@@ -30,7 +30,7 @@ public class GetCommentsForActivityQueryHandler : IRequestHandler<GetCommentsFor
         var userId = request.UserId.ToNullableGuid();
         var activityId = request.ActivityId.ToGuid();
         var order = request.Order.ToCommentSortByEnum();
-        IEnumerable<CommentStatus> statuses = [CommentStatus.Created, CommentStatus.Edited];
+        IReadOnlyCollection<CommentStatus> statuses = [CommentStatus.Created, CommentStatus.Edited];
 
         var comments = await _commentRepository.GetPagedCommentsForActivityAsync(activityId, order, statuses, request.Page, request.PageSize, cancellationToken);
 
