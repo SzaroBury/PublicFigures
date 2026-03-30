@@ -19,7 +19,7 @@ public class GetPersonTagsQueryHandler : IRequestHandler<GetPersonTagsQuery, IEn
     public async Task<IEnumerable<SimpleTagDTO>> Handle(GetPersonTagsQuery request, CancellationToken cancellationToken)
     {
         Guid personGuid = request.PersonId.ToGuid();
-        var tags = await _repository.GetPersonTagsAsync(personGuid, 1, cancellationToken);
+        var tags = await _repository.GetPersonTagsWithoutTrackingAsync(personGuid, 1, cancellationToken);
         return tags.Select(pt => pt.ToSimpleDTO());
     }
 }

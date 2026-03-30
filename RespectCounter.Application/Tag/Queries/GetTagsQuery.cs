@@ -18,7 +18,7 @@ namespace RespectCounter.Application.Tag.Queries
 
         public async Task<IEnumerable<TagDTO>> Handle(GetTagsQuery request, CancellationToken cancellationToken)
         {               
-            var tags = await _repository.GetAllAsync(request.AtLeastCount, cancellationToken);
+            var tags = await _repository.GetAllWithoutTrackingAsync(request.AtLeastCount, cancellationToken);
             return tags.Select(p => p.ToDTO());
         }
     }
