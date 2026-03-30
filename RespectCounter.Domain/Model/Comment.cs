@@ -7,6 +7,7 @@ public class Comment : Entity, IReactionable<CommentReaction>
 {
     public Comment() : base() { }
     public Comment(User user) : base(user, DateTime.UtcNow) { }
+    public Comment(Guid userId) : base(userId, DateTime.UtcNow) { }
     public Comment(User user, DateTime now) : base(user, now) { }
 
     public string Content { get; set; } = string.Empty;
