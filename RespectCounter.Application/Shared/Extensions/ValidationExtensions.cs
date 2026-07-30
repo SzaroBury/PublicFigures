@@ -13,7 +13,7 @@ public static class ValidationExtensions
         {
             return Guid.TryParse(id, out _);
         })
-        .WithMessage("{PropertyName} must be a valid GUID format.");
+        .WithMessage("'{PropertyName}' must be a valid GUID format.");
     }
 
     public static IRuleBuilderOptions<T, string?> MustBeAValidDate<T>(this IRuleBuilder<T, string?> builder)
@@ -51,7 +51,7 @@ public static class ValidationExtensions
             context.MessageFormatter.AppendArgument("EnumType", typeof(TEnum).Name);
             return Enum.IsDefined(typeof(TEnum), enumValue);
         })
-        .WithMessage("{PropertyName} must be a valid value for {EnumType}.");
+        .WithMessage("'{PropertyName}' must be a valid value for '{EnumType}'.");
     }
 
     public static IRuleBuilderOptions<T, string?> MustBeAValidEnum<T, TEnum>(this IRuleBuilder<T, string?> builder)
@@ -66,7 +66,7 @@ public static class ValidationExtensions
             context.MessageFormatter.AppendArgument("EnumType", nameof(TEnum));
             return Enum.IsDefined(typeof(TEnum), enumValue);
         })
-        .WithMessage("{PropertyName} must be a valid value for {EnumType}.");
+        .WithMessage("'{PropertyName}' must be a valid value for '{EnumType}'.");
     }
 
     public static IRuleBuilderOptions<T, string?> MustBeAnExistingUserAsync<T>(
