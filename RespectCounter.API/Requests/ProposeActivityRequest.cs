@@ -6,7 +6,7 @@ public record ProposeActivityRequest(
     string Title, 
     string? Description, 
     string? Location, 
-    string? Happend, 
+    string? OccurredAt, 
     string Source, 
     IEnumerable<string> Tags
 );

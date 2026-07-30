@@ -13,7 +13,7 @@ public static class SortingExtensions
         return sortBy switch
         {
             ActivitySortBy.LatestAdded => query.OrderByDescending(static a => a.Created),
-            ActivitySortBy.LatestHappend => query.OrderByDescending(static a => a.Happend),
+            ActivitySortBy.LatestOccurred => query.OrderByDescending(static a => a.OccurredAt),
             ActivitySortBy.BestMatching => throw new NotImplementedException(),
             ActivitySortBy.MostLiked => query.OrderByDescending(
                 a => a.Reactions.Sum(r => (int)r.ReactionType)),

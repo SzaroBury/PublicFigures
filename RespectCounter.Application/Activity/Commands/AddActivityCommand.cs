@@ -17,7 +17,7 @@ public record AddActivityCommand(
     string Value, 
     string Description, 
     string Location, 
-    string Happend, 
+    string OccurredAt, 
     string Source, 
     int Type, 
     IEnumerable<string> Tags,
@@ -72,17 +72,17 @@ public class AddActivityCommandHandler : IRequestHandler<AddActivityCommand, Act
 
     public DomainActivity CreateActivity(AddActivityCommand request, User user, DomainPerson person, DateTime now, CancellationToken cancellationToken)
     {
-        DateTime? happend = null;
-        if (!string.IsNullOrEmpty(request.Happend))
+        DateTime? occurredAt = null;
+        if (!string.IsNullOrEmpty(request.OccurredAt))
         {
             _ = DateTime.TryParseExact(
-                request.Happend, 
+                request.OccurredAt, 
                 "yyyy-MM-ddTHH:mm:ss.fffZ", 
                 CultureInfo.InvariantCulture, 
                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, 
                 out DateTime parsedDate
             );
-            happend = parsedDate;
+            occurredAt = parsedDate;
         }
 
         return new(user, now)
@@ -92,7 +92,7 @@ public class AddActivityCommandHandler : IRequestHandler<AddActivityCommand, Act
             Description = request.Description,
             Source = request.Source,
             Type = (ActivityType)request.Type,
-            Happend = happend,
+            OccurredAt = occurredAt,
             Person = person
         };
     }

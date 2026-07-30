@@ -5,7 +5,7 @@ export function OptionsSection({page, onSortOptionChangeClick}) {
 
     const optionsActivities = [
         { name: "LatestAdded", displayName:"Latest added" },
-        { name: "LatestHappend", displayName:"Latest" },
+        { name: "LatestOccurred", displayName:"Latest" },
         { name: "MostLiked", displayName:"Most respected" },
         { name: "LeastLiked", displayName:"Least respected" },
         { name: "Trending", displayName:"Trending" },

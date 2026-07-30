@@ -20,9 +20,9 @@ public class AddActivityCommandValidator : AbstractValidator<AddActivityCommand>
             .MustBeAValidGuid()
             .MustBeAnExistingUserAsync(repository, identityService);
 
-        RuleFor(x => x.Happend)
+        RuleFor(x => x.OccurredAt)
             .MustBeAValidDate()
-            .When(x => !string.IsNullOrWhiteSpace(x.Happend));
+            .When(x => !string.IsNullOrWhiteSpace(x.OccurredAt));
 
         RuleFor(x => x.Type)
             .NotEmpty().WithMessage("Type is required.")

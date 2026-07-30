@@ -10,7 +10,7 @@ import PersonDropdown from "./PersonDropdown/PersonDropdown";
 import TagDropdown from "./TagDropdown/TagDropdown";
 
 function CreateActivityPage() {
-    const [formData, setFormData] = useState({ type: 1, personId: '', title: '', description: '', happend: '', location: '', source: '', tags: '' });
+    const [formData, setFormData] = useState({ type: 1, personId: '', title: '', description: '', occurredAt: '', location: '', source: '', tags: '' });
     const [persons, setPersons] = useState([]);
     const [personTags, setPersonTags] = useState([]);
     const { logout, openLoginPopup } = useAuth();
@@ -59,7 +59,7 @@ function CreateActivityPage() {
         const { name, value } = e.target;
         if (name === "type") {
             setFormData({ ...formData, [name]: Number(value) })
-        } else if (name === "happend") {
+        } else if (name === "occurredAt") {
             setFormData({ ...formData, [name]: new Date(value).toISOString() })
         } else {
             setFormData({ ...formData, [name]: value });
@@ -160,8 +160,8 @@ function CreateActivityPage() {
                     <textarea className="form-control" name="description" placeholder="" onChange={handleDataChange} />
                 </div>
                 <div className="input-group w-75 mb-3">
-                    <span className="input-group-text">Happend<span className="text-danger">*</span>:</span>
-                    <input className="form-control" name="happend" type="date" onChange={handleDataChange} />
+                    <span className="input-group-text">OccurredAt<span className="text-danger">*</span>:</span>
+                    <input className="form-control" name="occurredAt" type="date" onChange={handleDataChange} />
                 </div>
                 {formData.type === 2 &&
                     <div className="input-group w-75 mb-3">

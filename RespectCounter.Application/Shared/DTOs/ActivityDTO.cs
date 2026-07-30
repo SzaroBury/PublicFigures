@@ -16,7 +16,7 @@ public record ActivityDTO(
     string Location, 
     string Source, 
     string Tags,
-    string Happend, 
+    string OccurredAt, 
     int CommentsCount,
     int Type, 
     int Respect,

@@ -25,9 +25,9 @@ public class UpdateActivityCommandValidator : AbstractValidator<UpdateActivityCo
             .MustBeAValidGuid()
             .MustBeAnExistingUserAsync(repository, identityService);
 
-        RuleFor(x => x.Happend)
+        RuleFor(x => x.OccurredAt)
             .Must(x => true)
-            .When(x => !string.IsNullOrWhiteSpace(x.Happend))
+            .When(x => !string.IsNullOrWhiteSpace(x.OccurredAt))
             .MustBeAValidDate();
 
         RuleFor(x => x.Type)

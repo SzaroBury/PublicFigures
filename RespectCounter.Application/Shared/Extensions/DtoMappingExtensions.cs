@@ -27,7 +27,7 @@ public static class DtoMappingExtensions
             a.Location,
             a.Source,
             string.Join(",", a.Tags.Select(pt => pt.Tag.Name)),
-            a.Happend?.ToString("o") ?? "",
+            a.OccurredAt?.ToString("o") ?? "",
             a.Comments.Count + a.Comments.Sum(c => c.ChildrenCount),
             (int)a.Type,
             a.Reactions.Sum(r => (int)r.ReactionType),

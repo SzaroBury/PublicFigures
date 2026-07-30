@@ -11,7 +11,7 @@ public class Activity : Entity, IReactionable<ActivityReaction>
     public string Value { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Location { get; set; } = string.Empty;
-    public DateTime? Happend { get; set; }
+    public DateTime? OccurredAt { get; set; }
     public string Source { get; set; } = string.Empty;
     public ActivityStatus Status { get; set; } = ActivityStatus.NotVerified;
     public ActivityType Type { get; set; } = ActivityType.Action;

@@ -6,6 +6,6 @@ public enum ActivitySortBy
     MostLiked,
     LeastLiked,
     LatestAdded,
-    LatestHappend,
+    LatestOccurred,
     BestMatching,
 }

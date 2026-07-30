@@ -14,7 +14,7 @@ public record UpdateActivityCommand(
     string Value, 
     string Description, 
     string Location, 
-    string Happend, 
+    string OccurredAt, 
     string Source, 
     int Type, 
     IEnumerable<string> Tags,
