@@ -4,7 +4,7 @@ public abstract class Auditable
 {
     public Auditable() {}
 
-    public Auditable(User user, DateTime? now)
+    internal Auditable(User user, DateTime? now)
     {
         if (!now.HasValue) now = DateTime.UtcNow;
         CreatedBy = user;
