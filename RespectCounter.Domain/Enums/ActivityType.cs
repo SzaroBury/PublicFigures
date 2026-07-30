@@ -2,6 +2,6 @@ namespace RespectCounter.Domain.Enums;
 
 public enum ActivityType
 {
-    Act,
+    Action,
     Quote
 }

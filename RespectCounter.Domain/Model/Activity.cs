@@ -14,7 +14,7 @@ public class Activity : Entity, IReactionable<ActivityReaction>
     public DateTime? Happend { get; set; }
     public string Source { get; set; } = string.Empty;
     public ActivityStatus Status { get; set; } = ActivityStatus.NotVerified;
-    public ActivityType Type { get; set; } = ActivityType.Act;
+    public ActivityType Type { get; set; } = ActivityType.Action;
     public Guid PersonId { get; set; }
     public virtual Person Person { get; set; } = null!;
     public virtual ICollection<ActivityReaction> Reactions { get; init; }  = [];
