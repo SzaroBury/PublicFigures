@@ -32,8 +32,26 @@ public static class SeedData
         Guid RKactivity = Guid.NewGuid();
         mb.Entity<Activity>().HasData(new List<Activity>
         {
-            CreateDummyActivity(RLactivity, RL, "Milik jest słaby", "", "Test description", "Dude, just trust me", type: ActivityType.Quote),
-            CreateDummyActivity(RKactivity, RK, "Monaco GP 2010: Robeeeeeeeert Kubica P2 in Quali", "Monaco, MC", "Można utknąć w eeeee korku", "https://www.youtube.com/watch?v=qbYMoKxif6I", type:ActivityType.Action, occurredAt: new DateTime(2010, 05, 15), status: ActivityStatus.Verified)
+            CreateDummyActivity(
+                RLactivity, 
+                RL, 
+                "Milik jest słaby", 
+                "", 
+                "Test description", 
+                "Dude, just trust me", 
+                type: ActivityType.Quote
+            ),
+            CreateDummyActivity(
+                RKactivity, 
+                RK, 
+                "Monaco GP 2010: Robeeeeeeeert Kubica P2 in Quali", 
+                "Monaco, MC", 
+                "Można utknąć w eeeee korku", 
+                "https://www.youtube.com/watch?v=qbYMoKxif6I", 
+                type:ActivityType.Action, 
+                occurredAt: new DateTime(2010, 05, 15), 
+                status: ActivityStatus.Verified
+            )
         });
 
         Guid RLComment = Guid.NewGuid();
