@@ -8,24 +8,30 @@ namespace RespectCounter.Application.Activity.Validators;
 
 public class AddActivityCommandValidator : AbstractValidator<AddActivityCommand>
 {
+    private const string requiredMessage = "'{PropertyName}' is required.";
+
     public AddActivityCommandValidator(IReadOnlyRepository repository, IIdentityService identityService)
     {
         RuleFor(x => x.PersonId)
-            .NotEmpty().WithMessage("PersonId is required.")
+            .NotEmpty().WithMessage(requiredMessage)
             .MustBeAValidGuid()
+            .WithName("personId")
             .MustBeAnExistingEntityAsync<AddActivityCommand, Domain.Model.Person>(repository);
 
         RuleFor(x => x.UserId)
-            .NotEmpty().WithMessage("UserId is required.")
+            .NotEmpty().WithMessage(requiredMessage)
             .MustBeAValidGuid()
+            .WithName("userId")
             .MustBeAnExistingUserAsync(repository, identityService);
 
         RuleFor(x => x.OccurredAt)
             .MustBeAValidDate()
+            .WithName("occurredAt")
             .When(x => !string.IsNullOrWhiteSpace(x.OccurredAt));
 
         RuleFor(x => x.Type)
-            .NotEmpty().WithMessage("Type is required.")
+            .NotEmpty().WithMessage(requiredMessage)
+            .WithName("type")
             .MustBeAValidEnum<AddActivityCommand, ActivityType>();
     }
 }
