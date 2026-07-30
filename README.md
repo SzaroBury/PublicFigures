@@ -31,34 +31,6 @@
 
 ---
 
-## **Installation**
-
-Follow these steps to set up the project locally:
-1. **Requirements**
-    Ensure you have the following installed:
-    - [**.NET 8 SDK**](https://dotnet.microsoft.com/download/dotnet/8.0)  
-    - [**Node.js (v23.0.0)**](https://nodejs.org/)
-    - [**Docker**](https://www.docker.com/)
-
-2. **Clone the repository:**
-   ```sh
-   git clone https://github.com/SzaroBury/RespectCounter.git
-   ```
-   
-3. **Start the API (manual):**
-   ```sh
-   dotnet run --project ./RespectCounter.API/
-   ```
-
-4. **Start the React app (manual):**
-   ```sh
-   cd ./RespectCounter.ReactApp/
-   npm install
-   npm start
-   ```
-
----
-
 ## **Running with Docker Compose**
 
 The project includes a `docker-compose.yml` file for easy multi-container setup (API, frontend with Nginx, and database).
@@ -78,11 +50,54 @@ The project includes a `docker-compose.yml` file for easy multi-container setup 
    The React frontend is served by Nginx, which also proxies API requests to the backend.
 
 3. Access the app in your browser at [http://localhost:8080](http://localhost:8080)
-
 4. To stop and remove containers:
    ```sh
    docker-compose down
    ```
+
+### **How to run only backend:**
+1. Make sure Docker is running on your machine.
+2. From the project root, run:
+   ```sh
+   docker-compose up api --build
+   ```
+   Or in the detached mode:
+   ```sh
+   docker-compose up -d api --build
+   ```
+3. The API will listen on: http://localhost:8080
+4. It can be tested thanks to Swagger UI: http://localhost:8080/swagger
+4. To stop and remove containers:
+   ```sh
+   docker-compose down
+   ```
+---
+
+## **Installation**
+
+Follow these steps to set up the project locally:
+1. **Requirements**
+    Ensure you have the following installed:
+    - [**.NET 8 SDK**](https://dotnet.microsoft.com/download/dotnet/8.0)  
+    - [**Node.js (v23.0.0)**](https://nodejs.org/)
+
+2. **Clone the repository:**
+   ```sh
+   git clone https://github.com/SzaroBury/RespectCounter.git
+   ```
+   
+3. **Start the API (manual):**
+   ```sh
+   dotnet run --project ./RespectCounter.API/
+   ```
+
+4. **Start the React app (manual):**
+   ```sh
+   cd ./RespectCounter.ReactApp/
+   npm install
+   npm run dev
+   ```
+   Access the app at http://localhost:3000
 
 ---
 
@@ -90,8 +105,14 @@ The project includes a `docker-compose.yml` file for easy multi-container setup 
 - Person
 - Activity
 - Comment
-- Reaction
 - Tag
+- User
+- BaseReaction
+- ActivityReaction
+- CommentReaction
+- PersonReaction
+- ActivityTag
+- PersonTag
 
 ![Entity Relationship Diagram](RespectCounterERD.png)
 
